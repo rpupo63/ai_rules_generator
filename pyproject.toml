@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-rules-generator"
+version = "1.0.0"
+description = "A CLI tool that generates comprehensive AI coding agent rules for Cursor and Claude Code"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+authors = [
+    {name = "AI Rules Generator Contributors"}
+]
+keywords = ["cursor", "claude", "ai", "rules", "code-generation", "coding-assistant"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Code Generators",
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+openai = ["openai>=1.0.0"]
+anthropic = ["anthropic>=0.18.0"]
+all = [
+    "openai>=1.0.0",
+    "anthropic>=0.18.0",
+]
+
+[project.scripts]
+ai-rules-generator = "ai_rules_generator:main"
+ai-rules = "ai_rules_generator:main"
+
+[project.urls]
+Homepage = "https://github.com/rpupo63/ai-rules-generator"
+Documentation = "https://github.com/rpupo63/ai-rules-generator#readme"
+Repository = "https://github.com/rpupo63/ai-rules-generator"
+Issues = "https://github.com/rpupo63/ai-rules-generator/issues"
+
+[tool.setuptools]
+packages = ["ai_rules_generator"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+ai_rules_generator = [
+    "awesome-cursorrules/**/*",
+    "ai_general_guidelines.md",
+]
+

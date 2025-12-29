@@ -1,0 +1,56 @@
+app-id: com.github.ai_rules_generator.AIRulesGenerator
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+command: ai-rules-generator
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --filesystem=host
+  - --env=PATH=/app/bin:/usr/bin
+modules:
+  - name: python3-pip
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-index --find-links="file://${PWD}" --prefix=${FLATPAK_DEST} pip
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/source/p/pip/pip-24.0.tar.gz
+        sha256: ea9bd1a847e8c5774a5777bb398c19e80bcd4e2aa16a4b301b718fe6f593aba2
+
+  - name: ai-rules-generator
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-index --find-links="file://${PWD}" --prefix=${FLATPAK_DEST} .
+    sources:
+      - type: archive
+        url: https://github.com/rpupo63/ai-rules-generator/archive/refs/tags/v1.0.0.tar.gz
+        sha256: REPLACE_WITH_ACTUAL_SHA256
+
+      # Optional dependencies
+      - type: file
+        url: https://files.pythonhosted.org/packages/source/o/openai/openai-1.6.1.tar.gz
+        sha256: REPLACE_WITH_ACTUAL_SHA256
+        dest-filename: openai-1.6.1.tar.gz
+
+      - type: file
+        url: https://files.pythonhosted.org/packages/source/a/anthropic/anthropic-0.18.1.tar.gz
+        sha256: REPLACE_WITH_ACTUAL_SHA256
+        dest-filename: anthropic-0.18.1.tar.gz
+
+  - name: metadata
+    buildsystem: simple
+    build-commands:
+      - install -Dm644 com.github.ai_rules_generator.AIRulesGenerator.desktop ${FLATPAK_DEST}/share/applications/com.github.ai_rules_generator.AIRulesGenerator.desktop
+      - install -Dm644 com.github.ai_rules_generator.AIRulesGenerator.metainfo.xml ${FLATPAK_DEST}/share/metainfo/com.github.ai_rules_generator.AIRulesGenerator.metainfo.xml
+      - install -Dm644 com.github.ai_rules_generator.AIRulesGenerator.svg ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/com.github.ai_rules_generator.AIRulesGenerator.svg
+    sources:
+      - type: file
+        path: com.github.ai_rules_generator.AIRulesGenerator.desktop
+      - type: file
+        path: com.github.ai_rules_generator.AIRulesGenerator.metainfo.xml
+      - type: file
+        path: com.github.ai_rules_generator.AIRulesGenerator.svg

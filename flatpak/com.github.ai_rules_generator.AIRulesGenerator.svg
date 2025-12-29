@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" version="1.1" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="url(#gradient)"/>
+
+  <!-- AI icon (brain/chip) -->
+  <g fill="#ffffff" stroke="#ffffff" stroke-width="2">
+    <!-- Document icon -->
+    <path d="M 40 35 L 40 93 L 88 93 L 88 50 L 73 35 Z" fill="none" stroke-linejoin="round"/>
+    <path d="M 73 35 L 73 50 L 88 50" fill="none" stroke-linejoin="round"/>
+
+    <!-- Code brackets -->
+    <path d="M 50 55 L 45 60 L 50 65" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 78 55 L 83 60 L 78 65" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Code lines -->
+    <line x1="55" y1="60" x2="73" y2="60" stroke-linecap="round"/>
+    <line x1="50" y1="70" x2="78" y2="70" stroke-linecap="round"/>
+    <line x1="50" y1="75" x2="68" y2="75" stroke-linecap="round"/>
+    <line x1="50" y1="80" x2="75" y2="80" stroke-linecap="round"/>
+  </g>
+</svg>

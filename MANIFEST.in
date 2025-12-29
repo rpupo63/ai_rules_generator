@@ -1,0 +1,5 @@
+include README.md
+include requirements.txt
+include *.md
+# Package data (awesome-cursorrules, ai_general_guidelines.md) is handled via package_data in setup.py/pyproject.toml
+

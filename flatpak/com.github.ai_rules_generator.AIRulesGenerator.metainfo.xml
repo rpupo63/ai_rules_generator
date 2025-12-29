@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="console-application">
+  <id>com.github.ai_rules_generator.AIRulesGenerator</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>AI Rules Generator</name>
+  <summary>Generate comprehensive AI coding assistant rules</summary>
+
+  <description>
+    <p>
+      AI Rules Generator is a powerful CLI tool that creates customized AI coding assistant
+      rules based on your project configuration and best practices.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Interactive Setup: Configure once, use everywhere</li>
+      <li>Multi-Tool Support: Generates rules for 6 AI coding tools (Cursor, Claude Code, Windsurf, GitHub Copilot, Warp, Janie)</li>
+      <li>Shared AI Rules: Creates .ai-rules/ directory as single source of truth</li>
+      <li>Multiple AI Providers: Support for OpenAI and Anthropic Claude models</li>
+      <li>Monorepo Support: Automatically detects and generates rules for each package</li>
+      <li>Language &amp; Framework Specific: Tailored rules for 20+ languages and 100+ frameworks</li>
+      <li>Template Fallback: Works without AI API keys using template-based generation</li>
+    </ul>
+  </description>
+
+  <url type="homepage">https://github.com/rpupo63/ai-rules-generator</url>
+  <url type="bugtracker">https://github.com/rpupo63/ai-rules-generator/issues</url>
+  <url type="help">https://github.com/rpupo63/ai-rules-generator#readme</url>
+
+  <provides>
+    <binary>ai-rules-generator</binary>
+    <binary>ai-rules</binary>
+  </provides>
+
+  <releases>
+    <release version="1.0.0" date="2024-12-27">
+      <description>
+        <p>Initial release</p>
+        <ul>
+          <li>Multi-tool support for 6 AI coding assistants</li>
+          <li>Interactive configuration setup</li>
+          <li>Support for OpenAI and Anthropic Claude models</li>
+          <li>Template-based fallback mode</li>
+          <li>Monorepo support</li>
+          <li>20+ languages and 100+ frameworks</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+
+  <content_rating type="oars-1.1" />
+
+  <categories>
+    <category>Development</category>
+    <category>Utility</category>
+  </categories>
+
+  <keywords>
+    <keyword>ai</keyword>
+    <keyword>cursor</keyword>
+    <keyword>claude</keyword>
+    <keyword>code-generation</keyword>
+    <keyword>coding-assistant</keyword>
+    <keyword>development</keyword>
+  </keywords>
+</component>

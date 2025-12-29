@@ -5,7 +5,7 @@ Data models for AI rules generator.
 from pathlib import Path
 from typing import List, Optional
 from dataclasses import dataclass
-from config import LANGUAGE_FRAMEWORK_MAP
+from .config import LANGUAGE_FRAMEWORK_MAP
 
 
 @dataclass

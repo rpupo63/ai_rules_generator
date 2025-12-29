@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=AI Rules Generator
+GenericName=AI Coding Rules Generator
+Comment=Generate comprehensive AI coding assistant rules for your projects
+Exec=ai-rules-generator
+Icon=com.github.ai_rules_generator.AIRulesGenerator
+Terminal=true
+Type=Application
+Categories=Development;Utility;
+Keywords=ai;cursor;claude;code-generation;coding-assistant;

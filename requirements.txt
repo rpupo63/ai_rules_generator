@@ -1,0 +1,6 @@
+# Core dependencies
+# No additional packages required for basic functionality
+
+# Optional: AI provider SDKs (install as needed)
+openai>=1.0.0  # For OpenAI provider
+anthropic>=0.18.0  # For Anthropic Claude provider

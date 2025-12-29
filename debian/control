@@ -1,0 +1,30 @@
+Source: ai-rules-generator
+Section: devel
+Priority: optional
+Maintainer: rpupo63 <rpupo63@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               python3-all,
+               python3-setuptools
+Standards-Version: 4.6.0
+Homepage: https://github.com/rpupo63/ai-rules-generator
+Vcs-Browser: https://github.com/rpupo63/ai-rules-generator
+Vcs-Git: https://github.com/rpupo63/ai-rules-generator.git
+Rules-Requires-Root: no
+
+Package: ai-rules-generator
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends}, python3 (>= 3.8)
+Recommends: python3-openai, python3-anthropic
+Description: CLI tool for generating AI coding assistant rules
+ AI Rules Generator is a powerful CLI tool that creates customized
+ AI coding assistant rules based on your project configuration.
+ .
+ Features:
+  - Interactive Setup: Configure once, use everywhere
+  - Multi-Tool Support: Generates rules for 6 AI coding tools
+  - Shared AI Rules: Creates .ai-rules/ directory
+  - Multiple AI Providers: Support for OpenAI and Anthropic Claude
+  - Monorepo Support: Automatically detects packages
+  - Language & Framework Specific: 20+ languages, 100+ frameworks
+  - Template Fallback: Works without AI API keys

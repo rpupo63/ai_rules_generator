@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+# 
+# NOTE: This manifest requires Windows executables to be built and uploaded to GitHub releases.
+# See PUBLISHING.md section 4 for instructions on building Windows executables with PyInstaller.
+#
+# After building executables:
+# 1. Upload them to GitHub release: ai-rules-generator-1.0.0-win64.exe (and win32.exe if needed)
+# 2. Download and calculate SHA256: sha256sum ai-rules-generator-1.0.0-win64.exe
+# 3. Update InstallerUrl and InstallerSha256 below with the actual values
+
+PackageIdentifier: AIRulesGenerator.AIRulesGenerator
+PackageVersion: 1.0.0
+Platform:
+- Windows.Desktop
+InstallerType: portable
+Commands:
+- ai-rules-generator
+- ai-rules
+Installers:
+- Architecture: x64
+  InstallerUrl: https://github.com/rpupo63/ai-rules-generator/releases/download/v1.0.0/ai-rules-generator-1.0.0-win64.exe
+  InstallerSha256: REPLACE_WITH_ACTUAL_SHA256
+  PortableCommandAlias: ai-rules-generator
+- Architecture: x86
+  InstallerUrl: https://github.com/rpupo63/ai-rules-generator/releases/download/v1.0.0/ai-rules-generator-1.0.0-win32.exe
+  InstallerSha256: REPLACE_WITH_ACTUAL_SHA256
+  PortableCommandAlias: ai-rules-generator
+ManifestType: installer
+ManifestVersion: 1.6.0
+

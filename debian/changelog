@@ -1,0 +1,11 @@
+ai-rules-generator (1.0.0-1) unstable; urgency=medium
+
+  * Initial release
+  * Multi-tool support for 6 AI coding assistants
+  * Interactive configuration setup
+  * Support for OpenAI and Anthropic Claude models
+  * Template-based fallback mode
+  * Monorepo support
+  * 20+ languages and 100+ frameworks
+
+ -- AI Rules Generator Contributors <noreply@example.com>  Fri, 27 Dec 2024 00:00:00 +0000
