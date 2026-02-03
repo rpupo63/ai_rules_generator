@@ -16,6 +16,12 @@ from .config_manager import (
     get_tool_display_name
 )
 
+# Import AI selection from shared library
+from ai_model_picker import (
+    select_provider as _select_provider,
+    select_model as _select_model,
+)
+
 # Try to import getch for better input handling, fallback to input() if not available
 try:
     import termios
@@ -267,35 +273,23 @@ def _select_multiple_from_options(
 
 
 def select_ai_provider() -> str:
-    """Select AI provider. Max 20 lines."""
-    providers = get_available_providers()
-    provider_options = []
-
-    for key, info in providers.items():
-        provider_options.append(key)
-
-    print("\n" + "=" * 60)
-    selected = _select_from_options(provider_options, "Select AI Provider")
+    """Select AI provider using shared library."""
+    selected = _select_provider("Select AI Provider")
     if not selected:
         print("Error: Provider selection required")
         sys.exit(1)
-
     return selected
 
 
 def select_ai_model(provider: str) -> str:
-    """Select AI model for the chosen provider. Max 20 lines."""
-    models = get_provider_models(provider)
-
+    """Select AI model for the chosen provider using shared library."""
     if provider == "none":
         return "template"
 
-    print("\n" + "=" * 60)
-    selected = _select_from_options(models, f"Select Model for {get_provider_display_name(provider)}")
+    selected = _select_model(provider)
     if not selected:
         print("Error: Model selection required")
         sys.exit(1)
-
     return selected
 
 

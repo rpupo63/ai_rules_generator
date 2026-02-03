@@ -26,6 +26,7 @@ setup(
         "ai_rules_generator": [
             "awesome-cursorrules/**/*",
             "ai_general_guidelines.md",
+            "provider_models.json",
         ],
     },
     include_package_data=True,

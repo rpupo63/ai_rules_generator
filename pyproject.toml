@@ -26,14 +26,24 @@ classifiers = [
     "Topic :: Software Development :: Code Generators",
 ]
 
-dependencies = []
+dependencies = [
+    "ai-model-picker>=0.1.0",
+]
 
 [project.optional-dependencies]
 openai = ["openai>=1.0.0"]
 anthropic = ["anthropic>=0.18.0"]
+google = ["google-generativeai>=0.3.0"]
+mistral = ["mistralai>=0.1.0"]
+cohere = ["cohere>=5.0.0"]
+alibaba = ["dashscope>=1.0.0"]
 all = [
     "openai>=1.0.0",
     "anthropic>=0.18.0",
+    "google-generativeai>=0.3.0",
+    "mistralai>=0.1.0",
+    "cohere>=5.0.0",
+    "dashscope>=1.0.0",
 ]
 
 [project.scripts]

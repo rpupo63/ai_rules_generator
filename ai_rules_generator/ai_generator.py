@@ -1,6 +1,9 @@
 """
 AI-powered rule generation using LLM APIs.
 Generates custom rules based on general guidelines and project context.
+
+Uses ai_model_picker for unified AI provider access, supporting:
+OpenAI, Anthropic, Google, Mistral, Cohere, DeepSeek, xAI, Meta, Alibaba.
 """
 
 import os
@@ -11,6 +14,16 @@ from dataclasses import dataclass
 
 from .file_utils import read_general_guidelines, read_rule_file, extract_rule_content
 from .config import LANGUAGE_FRAMEWORK_MAP
+
+# Import unified AI client from ai_model_picker
+from ai_model_picker import (
+    call_ai_simple,
+    get_model_api_id,
+    get_api_key_with_fallback,
+)
+
+# App name for config lookup
+APP_NAME = "ai-rules-generator"
 
 
 @dataclass
@@ -259,79 +272,12 @@ def build_ai_prompt(config: PromptConfig) -> str:
     return "\n\n".join(sections)
 
 
-def call_openai_api(prompt: str, model: str, api_key: Optional[str] = None) -> Optional[str]:
-    """Call OpenAI API to generate rules. Max 30 lines."""
-    try:
-        import openai
-
-        # Use provided key, fall back to environment variable
-        key = api_key or os.getenv("OPENAI_API_KEY")
-        if not key:
-            print("Error: OPENAI_API_KEY not set. Use 'config edit' to add it or set environment variable.", file=sys.stderr)
-            return None
-
-        client = openai.OpenAI(api_key=key)
-
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an expert at creating AI coding agent rules. You create specific, example-driven rules that follow best practices for Cursor and Claude Code."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.3,
-            max_tokens=4000
-        )
-
-        return response.choices[0].message.content.strip()
-
-    except ImportError:
-        print("Error: openai package not installed. Install with: pip install openai", file=sys.stderr)
-        return None
-    except Exception as e:
-        print(f"Error: OpenAI API call failed: {e}", file=sys.stderr)
-        return None
-
-
-def call_anthropic_api(prompt: str, model: str, api_key: Optional[str] = None) -> Optional[str]:
-    """Call Anthropic API to generate rules. Max 30 lines."""
-    try:
-        import anthropic
-
-        # Use provided key, fall back to environment variable
-        key = api_key or os.getenv("ANTHROPIC_API_KEY")
-        if not key:
-            print("Error: ANTHROPIC_API_KEY not set. Use 'config edit' to add it or set environment variable.", file=sys.stderr)
-            return None
-
-        client = anthropic.Anthropic(api_key=key)
-
-        message = client.messages.create(
-            model=model,
-            max_tokens=4000,
-            temperature=0.3,
-            system="You are an expert at creating AI coding agent rules. You create specific, example-driven rules that follow best practices for Cursor and Claude Code.",
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        )
-
-        return message.content[0].text.strip()
-
-    except ImportError:
-        print("Error: anthropic package not installed. Install with: pip install anthropic", file=sys.stderr)
-        return None
-    except Exception as e:
-        print(f"Error: Anthropic API call failed: {e}", file=sys.stderr)
-        return None
+# System prompt for rule generation
+RULE_GENERATION_SYSTEM_PROMPT = (
+    "You are an expert at creating AI coding agent rules. "
+    "You create specific, example-driven rules that follow best practices "
+    "for Cursor and Claude Code."
+)
 
 
 def call_ai_api(
@@ -339,21 +285,62 @@ def call_ai_api(
     provider: str = "openai",
     model: str = "gpt-4o-mini",
     openai_key: Optional[str] = None,
-    anthropic_key: Optional[str] = None
+    anthropic_key: Optional[str] = None,
+    google_key: Optional[str] = None,
+    mistral_key: Optional[str] = None,
+    cohere_key: Optional[str] = None,
+    **extra_keys,
 ) -> Optional[str]:
     """
-    Call AI API to generate rules. Max 20 lines.
-    Supports OpenAI and Anthropic providers.
+    Call AI API to generate rules using unified ai_model_picker client.
+
+    Supports all providers: OpenAI, Anthropic, Google, Mistral, Cohere,
+    DeepSeek, xAI, Meta, Alibaba.
+
+    Parameters
+    ----------
+    prompt : str
+        The prompt to send to the AI.
+    provider : str
+        AI provider (openai, anthropic, google, mistral, cohere, deepseek, xai, meta, alibaba, none).
+    model : str
+        Model name (display name or API ID).
+    openai_key, anthropic_key, google_key, mistral_key, cohere_key : str | None
+        Optional explicit API keys for specific providers.
+    **extra_keys : dict
+        Additional provider keys (deepseek_key, xai_key, meta_key, alibaba_key).
+
+    Returns
+    -------
+    str | None
+        Generated content, or None if provider is "none" or call fails.
     """
-    if provider == "openai":
-        return call_openai_api(prompt, model, api_key=openai_key)
-    elif provider == "anthropic":
-        return call_anthropic_api(prompt, model, api_key=anthropic_key)
-    elif provider == "none":
+    if provider == "none":
         return None
-    else:
-        print(f"Error: Unknown AI provider: {provider}", file=sys.stderr)
-        return None
+
+    # Map legacy key parameters to provider
+    key_map = {
+        "openai": openai_key,
+        "anthropic": anthropic_key,
+        "google": google_key,
+        "mistral": mistral_key,
+        "cohere": cohere_key,
+        "deepseek": extra_keys.get("deepseek_key"),
+        "xai": extra_keys.get("xai_key"),
+        "meta": extra_keys.get("meta_key"),
+        "alibaba": extra_keys.get("alibaba_key"),
+    }
+
+    api_key = key_map.get(provider)
+
+    return call_ai_simple(
+        prompt=prompt,
+        provider=provider,
+        model=model,
+        api_key=api_key,
+        app_name=APP_NAME,
+        system_prompt=RULE_GENERATION_SYSTEM_PROMPT,
+    )
 
 
 def generate_ai_rules(

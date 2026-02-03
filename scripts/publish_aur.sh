@@ -39,7 +39,7 @@ fi
 
 # Check SSH access to AUR
 info "Checking AUR SSH access..."
-if ! ssh -T aur@aur.archlinux.org 2>&1 | grep -q "successfully authenticated"; then
+if ! ssh -T aur@aur.archlinux.org 2>&1 | grep -qE "(Welcome to AUR|successfully authenticated)"; then
     warning "AUR SSH access not configured"
     info "Set up SSH key at: https://aur.archlinux.org/account/"
     info "Test with: ssh -T aur@aur.archlinux.org"

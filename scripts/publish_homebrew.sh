@@ -46,12 +46,12 @@ if [ ! -d "$TAP_DIR" ]; then
     
     mkdir -p "$(dirname "$TAP_DIR")"
     
-    if git clone "https://github.com/$TAP_REPO.git" "$TAP_DIR" 2>/dev/null; then
+    if git clone "git@github.com:$TAP_REPO.git" "$TAP_DIR" 2>/dev/null; then
         success "Cloned tap repository"
     else
         warning "Could not clone tap repository. You may need to create it first:"
         info "  1. Create repo on GitHub: $TAP_REPO"
-        info "  2. Or clone manually: git clone https://github.com/$TAP_REPO.git $TAP_DIR"
+        info "  2. Or clone manually: git clone git@github.com:$TAP_REPO.git $TAP_DIR"
         read -p "Continue with manual setup? [y/N]: " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -61,7 +61,7 @@ if [ ! -d "$TAP_DIR" ]; then
         mkdir -p "$TAP_DIR"
         cd "$TAP_DIR"
         git init
-        git remote add origin "https://github.com/$TAP_REPO.git" 2>/dev/null || true
+        git remote add origin "git@github.com:$TAP_REPO.git" 2>/dev/null || true
         cd - > /dev/null
     fi
 fi
