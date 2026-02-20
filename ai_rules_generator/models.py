@@ -31,6 +31,11 @@ def get_available_languages() -> List[str]:
     return [lang for lang in primary_languages if lang in LANGUAGE_FRAMEWORK_MAP]
 
 
+def get_all_languages(config: ProjectConfig) -> List[str]:
+    """Return all languages for a project config (used for monorepo root prompts)."""
+    return [config.primary_language]
+
+
 def get_available_frameworks(language: str) -> List[str]:
     """Get list of available frameworks for a language"""
     if language not in LANGUAGE_FRAMEWORK_MAP:

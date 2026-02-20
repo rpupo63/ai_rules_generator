@@ -1,4 +1,4 @@
-# Maintainer: rpupo63 <rpupo63@users.noreply.github.com>
+# Maintainer: Beto
 pkgname=ai-rules-generator
 pkgver=1.0.0
 pkgrel=1
@@ -6,29 +6,23 @@ pkgdesc="A CLI tool that generates comprehensive AI coding agent rules for Curso
 arch=('any')
 url="https://github.com/rpupo63/ai-rules-generator"
 license=('MIT')
-depends=('python' 'python-setuptools')
+depends=('python' 'ai-model-picker')
 optdepends=(
     'python-openai: For OpenAI provider support'
     'python-anthropic: For Anthropic Claude provider support'
 )
-makedepends=('python-build' 'python-installer' 'python-wheel')
-
-# ============================================================================
-# AUR PUBLISHING CONFIGURATION
-# ============================================================================
-source=("$pkgname-$pkgver.tar.gz::https://github.com/rpupo63/$pkgname/archive/v$pkgver.tar.gz")
-sha256sums=('0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5')
+makedepends=('python-build' 'python-installer' 'python-wheel' 'python-setuptools')
+source=()
+sha256sums=()
 
 build() {
-    cd "${srcdir}/${pkgname}-${pkgver}"
+    cd "$startdir"
     python -m build --wheel --no-isolation
 }
 
 package() {
-    cd "${srcdir}/${pkgname}-${pkgver}"
+    cd "$startdir"
     python -m installer --destdir="$pkgdir" dist/*.whl
 
-    # Install license
-    install -Dm644 LICENSE \
-        "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

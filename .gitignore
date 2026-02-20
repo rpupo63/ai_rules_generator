@@ -162,3 +162,6 @@ flatpak/.flatpak-builder/
 .package-manager-repos/
 package-manager-repos/
 _repos/
+
+# Test fixtures (downloaded repos)
+tests/tmpq87_trbl/

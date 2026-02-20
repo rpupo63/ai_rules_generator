@@ -7,8 +7,41 @@ from pathlib import Path
 from typing import Optional, List
 
 from .models import ProjectConfig
-from .config import LANGUAGE_FRAMEWORK_MAP
+from .config import LANGUAGE_FRAMEWORK_MAP, UNIVERSAL_RULES
 from .generators import generate_project_context
+
+
+def _build_ai_rules_file_listing(config: ProjectConfig) -> List[str]:
+    """Build the list of files that exist in the .ai-rules/ directory based on project config."""
+    files = ["project-rules.md"]
+
+    language_key = config.primary_language.lower()
+    if language_key == "js":
+        language_key = "javascript"
+    elif language_key == "ts":
+        language_key = "typescript"
+
+    language_info = LANGUAGE_FRAMEWORK_MAP.get(language_key, {})
+    if language_info.get("rule_file"):
+        files.append(f"language-{language_key}.md")
+
+    for framework in config.frameworks:
+        files.append(f"framework-{framework.lower()}.md")
+
+    for universal_rule in UNIVERSAL_RULES:
+        if universal_rule not in [f.lower() for f in config.frameworks]:
+            files.append(f"universal-{universal_rule}.md")
+
+    files.append("README.md")
+    return files
+
+
+def _format_file_listing(files: List[str], prefix: str = ".ai-rules/") -> str:
+    """Format a list of .ai-rules/ files as a bullet list."""
+    lines = []
+    for f in files:
+        lines.append(f"- `{prefix}{f}`")
+    return "\n".join(lines)
 
 
 def generate_all_tool_rules(
@@ -123,19 +156,27 @@ def generate_claude_code_rules(
     claude_rules_dir.mkdir(parents=True, exist_ok=True)
     
     # Copy references to shared rules
+    ai_rules_files = _build_ai_rules_file_listing(config)
+    file_listing = _format_file_listing(ai_rules_files, prefix="../.ai-rules/")
+
     readme_content = f"""# Claude Code Rules
 
-This directory contains Claude Code-specific rule references.
-All actual rules are stored in `.ai-rules/` directory.
+All project coding rules are stored in the `.ai-rules/` directory at the project root.
+Use the `Read` tool to access them. Use `Glob` with pattern `.ai-rules/**/*.md` to discover all rule files.
 
-## Project Rules
+## How to Read the Rules
 
-See `.ai-rules/project-rules.md` for main project rules.
+1. Start with the main rules: Use `Read` on `.ai-rules/project-rules.md`
+2. Read language/framework rules as needed from `.ai-rules/`
+3. See `.ai-rules/README.md` for a full index
+
+## Available Rule Files
+
+{file_listing}
 
 ## Additional Resources
 
-- `.ai-rules/README.md` - Index of all rule files
-- `../CLAUDE.md` - Main Claude Code configuration
+- `../CLAUDE.md` - Main Claude Code configuration (this tool's entry point)
 """
     readme_file = claude_rules_dir / "README.md"
     readme_file.write_text(readme_content, encoding='utf-8')
@@ -215,49 +256,48 @@ def _generate_cursorrules_content(
     base_path: Path
 ) -> str:
     """Generate .cursorrules content."""
+    ai_rules_files = _build_ai_rules_file_listing(config)
+    file_listing = _format_file_listing(ai_rules_files)
+
     sections = [f"""# AI Coding Rules for {config.description}
 
-This file references shared AI rules located in `.ai-rules/`.
-For detailed rules, see the files in that directory.
+"""]
+
+    sections.append(generate_project_context(config))
+    sections.append(f"""## Project Documentation
+
+This project's coding rules and guidelines are stored in the `.ai-rules/` directory.
+You MUST read these files before making changes to the codebase.
+
+### How to Access the Rules
+
+Use Cursor's file reading capabilities to access the rules:
+
+1. **Read the main rules first**: Open `.ai-rules/project-rules.md` using `@file` or read it directly
+2. **Read language-specific rules**: Open the relevant `.ai-rules/language-*.md` file
+3. **Read framework rules**: Open the relevant `.ai-rules/framework-*.md` files
+4. **Browse all available rules**: Open `.ai-rules/README.md` for a full index
+
+You can also use `codebase_search` to find specific rules by topic.
 
 **Note:** Cursor also reads from `.cursor/rules/*.mdc` files which contain
 more structured rules with glob patterns.
 
-"""]
-    
-    sections.append(generate_project_context(config))
-    sections.append("""## Main Rules
+### Available Rule Files
 
-The primary project rules are defined in `.ai-rules/project-rules.md`.
-This includes project context, general principles, and overall guidelines.
-
-For Cursor's modern rule system, see `.cursor/rules/*.mdc` files.
+{file_listing}
 
 ## Critical Instructions
 
-1. **Always verify before implementing**: Search for similar functionality first
+1. **Read the rules**: ALWAYS read `.ai-rules/project-rules.md` before starting work
 2. **Follow project conventions**: Match existing code style and patterns
 3. **Security first**: Never introduce security vulnerabilities
 4. **Test your code**: Ensure new code passes all tests
-5. **Document complex logic**: Add comments for non-obvious code
-6. **Reference shared rules**: Check `.ai-rules/` directory for detailed guidelines
-
-## Repository Navigation
-
-When working in this repository:
-- Use codebase_search to find existing patterns and similar implementations
-- Check existing components, utilities, and patterns before creating new ones
-- Follow the established project structure and conventions
-- Review related files to understand the codebase architecture
-- Reference `.ai-rules/` directory for comprehensive guidelines
-
-For complete rules, see:
-- `.ai-rules/project-rules.md` - Full project rules
-- `.ai-rules/README.md` - Index of all rule files
-- `.cursor/rules/*.mdc` - Cursor-specific structured rules
+5. **Search first**: Use codebase_search to find existing patterns before creating new ones
+6. **Reference framework rules**: Read the relevant `.ai-rules/framework-*.md` files when working with specific frameworks
 
 """)
-    
+
     return "".join(sections)
 
 
@@ -271,23 +311,20 @@ def _generate_cursor_mdc_content(
     """Generate Cursor MDC format content."""
     if description is None:
         description = "Project coding rules and guidelines"
-    
+
+    ai_rules_files = _build_ai_rules_file_listing(config)
+    file_listing = _format_file_listing(ai_rules_files)
+
     frontmatter = f"""---
 description: {description}
 """
-    
+
     if glob_pattern:
         frontmatter += f"globs:\n  - \"{glob_pattern}\"\n"
-    
+
     frontmatter += f"alwaysApply: {str(always_apply).lower()}\n---\n\n"
-    
+
     content = f"""# {description}
-
-This rule file references shared AI rules in `.ai-rules/` directory.
-
-## Main Rules
-
-See `.ai-rules/project-rules.md` for comprehensive project rules.
 
 ## Quick Reference
 
@@ -295,15 +332,20 @@ See `.ai-rules/project-rules.md` for comprehensive project rules.
 - Primary language: {config.primary_language.title()}
 - Frameworks: {', '.join(config.frameworks) if config.frameworks else 'None'}
 
-## Rules Location
+## Project Documentation
 
-All detailed rules are maintained in `.ai-rules/`:
-- `.ai-rules/project-rules.md` - Main project rules
-- `.ai-rules/README.md` - Complete index
+This project's coding rules are in the `.ai-rules/` directory.
+ALWAYS read `.ai-rules/project-rules.md` before starting work on this codebase.
 
-This keeps rules DRY and maintainable across all AI coding tools.
+To access the rules, use `@file` to reference them or read them directly:
+
+### Available Rule Files
+
+{file_listing}
+
+Read `.ai-rules/README.md` for a complete index of all rule files.
 """
-    
+
     return frontmatter + content
 
 
@@ -313,41 +355,46 @@ def _generate_claude_content(
     base_path: Path
 ) -> str:
     """Generate Claude Code CLAUDE.md content."""
+    ai_rules_files = _build_ai_rules_file_listing(config)
+    file_listing = _format_file_listing(ai_rules_files)
+
     sections = [f"""# AI Coding Rules for {config.description}
 
-This file references shared AI rules located in `.ai-rules/`.
-For detailed rules, see the files in that directory.
-
 """]
-    
-    sections.append(generate_project_context(config))
-    sections.append("""## Main Rules
 
-The primary project rules are defined in `.ai-rules/project-rules.md`.
+    sections.append(generate_project_context(config))
+    sections.append(f"""## Project Documentation
+
+This project's coding rules and guidelines are stored in the `.ai-rules/` directory.
+You MUST read these files before making changes to the codebase.
+
+### How to Access the Rules
+
+Use the `Read` tool to read files from the `.ai-rules/` directory. Start with the
+project rules, then read language/framework-specific files as needed:
+
+1. **Read the main rules first**: Use `Read` on `.ai-rules/project-rules.md`
+2. **Read language-specific rules**: Use `Read` on the relevant `language-*.md` file
+3. **Read framework rules**: Use `Read` on the relevant `framework-*.md` files
+4. **Browse all available rules**: Use `Read` on `.ai-rules/README.md` for a full index
+
+To discover all rule files, use the `Glob` tool with pattern `.ai-rules/**/*.md`.
+
+### Available Rule Files
+
+{file_listing}
 
 ## Critical Instructions
 
-1. **Always verify before implementing**: Search for similar functionality first
+1. **Read the rules**: ALWAYS read `.ai-rules/project-rules.md` before starting work
 2. **Follow project conventions**: Match existing code style and patterns
 3. **Security first**: Never introduce security vulnerabilities
 4. **Test your code**: Ensure new code passes all tests
-5. **Document complex logic**: Add comments for non-obvious code
-6. **Reference shared rules**: Check `.ai-rules/` directory for detailed guidelines
-
-## Repository Navigation
-
-- Use codebase_search to find existing patterns and similar implementations
-- Check existing components, utilities, and patterns before creating new ones
-- Follow the established project structure and conventions
-- Review related files to understand the codebase architecture
-- Reference `.ai-rules/` directory for comprehensive guidelines
-
-For complete rules, see:
-- `.ai-rules/project-rules.md` - Full project rules
-- `.ai-rules/README.md` - Index of all rule files
+5. **Search first**: Use Grep and Glob to find existing patterns before creating new ones
+6. **Reference framework rules**: Read the relevant `.ai-rules/framework-*.md` files when working with specific frameworks
 
 """)
-    
+
     return "".join(sections)
 
 
@@ -357,44 +404,46 @@ def _generate_windsurf_content(
     base_path: Path
 ) -> str:
     """Generate Windsurf .windsurfrules content."""
+    ai_rules_files = _build_ai_rules_file_listing(config)
+    file_listing = _format_file_listing(ai_rules_files)
+
     sections = [f"""# Windsurf AI Coding Rules for {config.description}
 
-This file references shared AI rules located in `.ai-rules/`.
-Windsurf can also read from `.cursor` directory if present.
-
 """]
-    
-    sections.append(generate_project_context(config))
-    sections.append("""## Main Rules
 
-The primary project rules are defined in `.ai-rules/project-rules.md`.
+    sections.append(generate_project_context(config))
+    sections.append(f"""## Project Documentation
+
+This project's coding rules and guidelines are stored in the `.ai-rules/` directory.
+You MUST read these files before making changes to the codebase.
+
+### How to Access the Rules
+
+Use Windsurf's file reading capabilities to access the rules:
+
+1. **Read the main rules first**: Read `.ai-rules/project-rules.md`
+2. **Read language-specific rules**: Read the relevant `.ai-rules/language-*.md` file
+3. **Read framework rules**: Read the relevant `.ai-rules/framework-*.md` files
+4. **Browse all available rules**: Read `.ai-rules/README.md` for a full index
+
+You can also search the `.ai-rules/` directory for rules on specific topics.
+Windsurf can also read from `.cursor/rules/*.mdc` files if present.
+
+### Available Rule Files
+
+{file_listing}
 
 ## Critical Instructions
 
-1. **Always verify before implementing**: Search for similar functionality first
+1. **Read the rules**: ALWAYS read `.ai-rules/project-rules.md` before starting work
 2. **Follow project conventions**: Match existing code style and patterns
 3. **Security first**: Never introduce security vulnerabilities
 4. **Test your code**: Ensure new code passes all tests
-5. **Document complex logic**: Add comments for non-obvious code
-6. **Reference shared rules**: Check `.ai-rules/` directory for detailed guidelines
-
-## Repository Navigation
-
-When working in this repository:
-- Use codebase_search to find existing patterns and similar implementations
-- Check existing components, utilities, and patterns before creating new ones
-- Follow the established project structure and conventions
-- Review related files to understand the codebase architecture
-- Reference `.ai-rules/` directory for comprehensive guidelines
-
-For complete rules, see:
-- `.ai-rules/project-rules.md` - Full project rules
-- `.ai-rules/README.md` - Index of all rule files
-
-Note: Windsurf also supports reading from `.cursor/rules/*.mdc` files if available.
+5. **Search first**: Find existing patterns before creating new ones
+6. **Reference framework rules**: Read the relevant `.ai-rules/framework-*.md` files when working with specific frameworks
 
 """)
-    
+
     return "".join(sections)
 
 
@@ -404,43 +453,48 @@ def _generate_copilot_content(
     base_path: Path
 ) -> str:
     """Generate GitHub Copilot instructions content."""
+    ai_rules_files = _build_ai_rules_file_listing(config)
+    file_listing = _format_file_listing(ai_rules_files)
+
     sections = [f"""# GitHub Copilot Instructions for {config.description}
 
-This file provides instructions for GitHub Copilot.
-It references shared AI rules located in `.ai-rules/`.
-
 """]
-    
-    sections.append(generate_project_context(config))
-    sections.append("""## Main Rules
 
-The primary project rules are defined in `.ai-rules/project-rules.md`.
+    sections.append(generate_project_context(config))
+    sections.append(f"""## Project Documentation
+
+This project's coding rules and guidelines are stored in the `.ai-rules/` directory.
+You MUST read these files before making changes to the codebase.
+
+### How to Access the Rules
+
+Use the `#file:` syntax to reference rule files in Copilot Chat, or read them directly:
+
+1. **Read the main rules first**: `#file:.ai-rules/project-rules.md`
+2. **Read language-specific rules**: `#file:.ai-rules/language-*.md`
+3. **Read framework rules**: `#file:.ai-rules/framework-*.md`
+4. **Browse all available rules**: `#file:.ai-rules/README.md`
+
+In Copilot Workspace or Copilot Chat, you can ask Copilot to read these files
+to understand the project's coding standards before suggesting changes.
+
+### Available Rule Files
+
+{file_listing}
 
 ## Instructions for Copilot
 
 When suggesting code:
 
-1. **Always verify before implementing**: Search for similar functionality first
+1. **Read the rules**: ALWAYS read `.ai-rules/project-rules.md` before starting work
 2. **Follow project conventions**: Match existing code style and patterns
 3. **Security first**: Never introduce security vulnerabilities
 4. **Test your code**: Ensure new code passes all tests
-5. **Document complex logic**: Add comments for non-obvious code
-6. **Reference shared rules**: Check `.ai-rules/` directory for detailed guidelines
-
-## Repository Navigation
-
-- Look for existing patterns and similar implementations
-- Check existing components, utilities, and patterns before creating new ones
-- Follow the established project structure and conventions
-- Review related files to understand the codebase architecture
-- Reference `.ai-rules/` directory for comprehensive guidelines
-
-For complete rules, see:
-- `.ai-rules/project-rules.md` - Full project rules
-- `.ai-rules/README.md` - Index of all rule files
+5. **Search first**: Look for existing patterns before creating new ones
+6. **Reference framework rules**: Read the relevant `.ai-rules/framework-*.md` files when working with specific frameworks
 
 """)
-    
+
     return "".join(sections)
 
 
@@ -450,41 +504,44 @@ def _generate_warp_content(
     base_path: Path
 ) -> str:
     """Generate Warp AI rules content."""
+    ai_rules_files = _build_ai_rules_file_listing(config)
+    file_listing = _format_file_listing(ai_rules_files)
+
     sections = [f"""# Warp AI Coding Rules for {config.description}
 
-This file references shared AI rules located in `.ai-rules/`.
-
 """]
-    
-    sections.append(generate_project_context(config))
-    sections.append("""## Main Rules
 
-The primary project rules are defined in `.ai-rules/project-rules.md`.
+    sections.append(generate_project_context(config))
+    sections.append(f"""## Project Documentation
+
+This project's coding rules and guidelines are stored in the `.ai-rules/` directory.
+You MUST read these files before making changes to the codebase.
+
+### How to Access the Rules
+
+Use shell commands to read the rule files:
+
+1. **Read the main rules first**: `cat .ai-rules/project-rules.md`
+2. **Read language-specific rules**: `cat .ai-rules/language-*.md`
+3. **Read framework rules**: `cat .ai-rules/framework-*.md`
+4. **List all available rules**: `ls .ai-rules/`
+5. **Browse the index**: `cat .ai-rules/README.md`
+
+### Available Rule Files
+
+{file_listing}
 
 ## Critical Instructions
 
-1. **Always verify before implementing**: Search for similar functionality first
+1. **Read the rules**: ALWAYS read `.ai-rules/project-rules.md` before starting work
 2. **Follow project conventions**: Match existing code style and patterns
 3. **Security first**: Never introduce security vulnerabilities
 4. **Test your code**: Ensure new code passes all tests
-5. **Document complex logic**: Add comments for non-obvious code
-6. **Reference shared rules**: Check `.ai-rules/` directory for detailed guidelines
-
-## Repository Navigation
-
-When working in this repository:
-- Use codebase_search to find existing patterns and similar implementations
-- Check existing components, utilities, and patterns before creating new ones
-- Follow the established project structure and conventions
-- Review related files to understand the codebase architecture
-- Reference `.ai-rules/` directory for comprehensive guidelines
-
-For complete rules, see:
-- `.ai-rules/project-rules.md` - Full project rules
-- `.ai-rules/README.md` - Index of all rule files
+5. **Search first**: Find existing patterns before creating new ones
+6. **Reference framework rules**: Read the relevant `.ai-rules/framework-*.md` files when working with specific frameworks
 
 """)
-    
+
     return "".join(sections)
 
 
@@ -494,41 +551,43 @@ def _generate_janie_content(
     base_path: Path
 ) -> str:
     """Generate Janie AI rules content."""
+    ai_rules_files = _build_ai_rules_file_listing(config)
+    file_listing = _format_file_listing(ai_rules_files)
+
     sections = [f"""# Janie AI Coding Rules for {config.description}
 
-This file references shared AI rules located in `.ai-rules/`.
-
 """]
-    
-    sections.append(generate_project_context(config))
-    sections.append("""## Main Rules
 
-The primary project rules are defined in `.ai-rules/project-rules.md`.
+    sections.append(generate_project_context(config))
+    sections.append(f"""## Project Documentation
+
+This project's coding rules and guidelines are stored in the `.ai-rules/` directory.
+You MUST read these files before making changes to the codebase.
+
+### How to Access the Rules
+
+Read the rule files from the `.ai-rules/` directory:
+
+1. **Read the main rules first**: `.ai-rules/project-rules.md`
+2. **Read language-specific rules**: `.ai-rules/language-*.md`
+3. **Read framework rules**: `.ai-rules/framework-*.md`
+4. **Browse all available rules**: `.ai-rules/README.md` for a full index
+
+### Available Rule Files
+
+{file_listing}
 
 ## Critical Instructions
 
-1. **Always verify before implementing**: Search for similar functionality first
+1. **Read the rules**: ALWAYS read `.ai-rules/project-rules.md` before starting work
 2. **Follow project conventions**: Match existing code style and patterns
 3. **Security first**: Never introduce security vulnerabilities
 4. **Test your code**: Ensure new code passes all tests
-5. **Document complex logic**: Add comments for non-obvious code
-6. **Reference shared rules**: Check `.ai-rules/` directory for detailed guidelines
-
-## Repository Navigation
-
-When working in this repository:
-- Use codebase_search to find existing patterns and similar implementations
-- Check existing components, utilities, and patterns before creating new ones
-- Follow the established project structure and conventions
-- Review related files to understand the codebase architecture
-- Reference `.ai-rules/` directory for comprehensive guidelines
-
-For complete rules, see:
-- `.ai-rules/project-rules.md` - Full project rules
-- `.ai-rules/README.md` - Index of all rule files
+5. **Search first**: Find existing patterns before creating new ones
+6. **Reference framework rules**: Read the relevant `.ai-rules/framework-*.md` files when working with specific frameworks
 
 """)
-    
+
     return "".join(sections)
 
 

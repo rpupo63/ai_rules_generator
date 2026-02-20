@@ -139,11 +139,19 @@ This directory contains shared AI coding rules for this project. These rules are
 
 ## Usage
 
-These rules are automatically loaded by:
-- Cursor: Via `.cursorrules` or `.cursor/rules/*.mdc` files
-- Claude Code: Via `CLAUDE.md` files
+These rules are referenced by the tool-specific config files in this project.
+Each AI coding tool has its own entry point that directs the agent to read
+files from this directory:
 
-You can manually reference specific rule files when needed, or let the tools automatically load the appropriate rules based on context.
+- **Cursor**: `.cursorrules` and `.cursor/rules/*.mdc` - use `@file` to reference rules
+- **Claude Code**: `CLAUDE.md` and `.claude/rules/` - use the `Read` tool on these files
+- **Windsurf**: `.windsurfrules` - read these files directly
+- **GitHub Copilot**: `.github/copilot-instructions.md` - use `#file:` syntax to reference rules
+- **Warp**: `.warp/rules.md` - use `cat` to read these files
+- **Janie**: `.janie/rules.md` - read these files directly
+
+When starting work on this project, the AI agent should read `project-rules.md` first,
+then consult language and framework files as needed.
 """
     
     readme_file = ai_rules_dir / "README.md"

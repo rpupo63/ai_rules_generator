@@ -289,6 +289,7 @@ def call_ai_api(
     google_key: Optional[str] = None,
     mistral_key: Optional[str] = None,
     cohere_key: Optional[str] = None,
+    system_prompt: Optional[str] = None,
     **extra_keys,
 ) -> Optional[str]:
     """
@@ -339,7 +340,7 @@ def call_ai_api(
         model=model,
         api_key=api_key,
         app_name=APP_NAME,
-        system_prompt=RULE_GENERATION_SYSTEM_PROMPT,
+        system_prompt=system_prompt or RULE_GENERATION_SYSTEM_PROMPT,
     )
 
 
@@ -356,7 +357,8 @@ def generate_ai_rules(
     ai_provider: str = "openai",
     ai_model: str = "gpt-4o-mini",
     openai_key: Optional[str] = None,
-    anthropic_key: Optional[str] = None
+    anthropic_key: Optional[str] = None,
+    google_key: Optional[str] = None,
 ) -> Optional[str]:
     """
     Generate AI-powered custom rules. Max 40 lines.
@@ -371,10 +373,11 @@ def generate_ai_rules(
         format_mdc: Whether to generate MDC format
         use_ai: Whether to use AI (if False, falls back to template)
         all_languages: List of all languages in monorepo (for monorepo root)
-        ai_provider: AI provider to use (openai, anthropic, none)
+        ai_provider: AI provider to use (openai, anthropic, google, none)
         ai_model: AI model to use
         openai_key: Optional OpenAI API key
         anthropic_key: Optional Anthropic API key
+        google_key: Optional Google API key
 
     Returns:
         Generated rules content or None for fallback
@@ -408,7 +411,8 @@ def generate_ai_rules(
             provider=ai_provider,
             model=ai_model,
             openai_key=openai_key,
-            anthropic_key=anthropic_key
+            anthropic_key=anthropic_key,
+            google_key=google_key,
         )
         if ai_content:
             return ai_content
