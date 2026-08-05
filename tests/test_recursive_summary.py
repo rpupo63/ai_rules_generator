@@ -57,7 +57,6 @@ def scan_result(cloned_repo, project_config) -> ScanContext:
     return scan_project(
         project_root=cloned_repo,
         project_config=project_config,
-        max_depth=4,
     )
 
 
@@ -165,11 +164,24 @@ class TestScanContext:
             assert folder.purpose, f"Folder '{folder.path}' has no purpose"
 
     def test_few_generic_purposes(self, scan_result):
-        """After enrichment, at most 2 folders should still have the generic 'project files' label."""
+        """After enrichment, package roots should have specific purposes.
+
+        With unlimited-depth scanning many deeply nested leaf folders may
+        still carry the generic 'project files' label; we only assert that
+        the high-signal roots were enriched and that generic labels are not
+        the majority of the tree.
+        """
+        for folder in scan_result.flat:
+            if folder.path in ("", "backend", "frontend", "extension"):
+                assert folder.purpose != "project files", (
+                    f"Package root '{folder.path}' should have a specific purpose, "
+                    f"got '{folder.purpose}'"
+                )
         generic = [f for f in scan_result.flat if f.purpose == "project files"]
-        assert len(generic) <= 2, (
-            f"Expected <= 2 generic 'project files' folders, got {len(generic)}: "
-            f"{ [f.path for f in generic]}"
+        assert len(generic) <= max(2, len(scan_result.flat) // 2), (
+            f"Expected at most half of folders to remain generic, got "
+            f"{len(generic)}/{len(scan_result.flat)}: "
+            f"{[f.path for f in generic[:5]]}..."
         )
 
     def test_files_have_roles(self, scan_result):
