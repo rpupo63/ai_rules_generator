@@ -116,6 +116,24 @@ def cmd_config_set(args) -> None:
         config.ai_model = args.value
         print(f"Set model to: {args.value}")
 
+    elif args.key == "instructions":
+        config.instructions = args.value
+        print("Set additional model instructions")
+
+    elif args.key == "api-key":
+        # Format: provider=key  or  use current provider
+        if "=" in args.value:
+            provider_key, key_value = args.value.split("=", 1)
+        else:
+            provider_key, key_value = config.ai_provider, args.value
+        provider_key = provider_key.strip()
+        if provider_key not in get_available_providers() or provider_key == "none":
+            print(f"Error: Invalid provider '{provider_key}'")
+            print(f"Valid providers: {', '.join(k for k in get_available_providers() if k != 'none')}")
+            sys.exit(1)
+        config.api_keys[provider_key] = key_value.strip()
+        print(f"Set API key for {get_provider_display_name(provider_key)}")
+
     elif args.key == "openai-key":
         config.openai_api_key = args.value
         print("Set OpenAI API key")

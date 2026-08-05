@@ -16,23 +16,27 @@ from .paths import validate_and_resolve_paths
 from .scanner import scan_project, FolderInfo, ScanContext
 from .generators_shared import create_shared_ai_rules_directory
 from .generators_multi_tool import generate_all_tool_rules
+from .orchestration import generate_single_project_rules_setup
+from .linker import LinkMode
 from .detection import detect_folder_technology
 
 
-# Snapshot file storing last scan state
-SNAPSHOT_FILE = ".ai-rules/.scan-snapshot.json"
+# Snapshot file storing last scan state (prefer complementary pack location)
+SNAPSHOT_FILE_LEGACY = ".ai-rules/.scan-snapshot.json"
+SNAPSHOT_FILE = ".ai-context/.scan-snapshot.json"
 
 
 def _load_snapshot(project_root: Path) -> Dict:
     """Load the previous scan snapshot."""
-    snapshot_path = project_root / SNAPSHOT_FILE
-    if not snapshot_path.exists():
-        return {}
-
-    try:
-        return json.loads(snapshot_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return {}
+    for rel in (SNAPSHOT_FILE, SNAPSHOT_FILE_LEGACY):
+        snapshot_path = project_root / rel
+        if not snapshot_path.exists():
+            continue
+        try:
+            return json.loads(snapshot_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+    return {}
 
 
 def _save_snapshot(project_root: Path, folders: List[FolderInfo]) -> None:
@@ -97,9 +101,17 @@ def _diff_snapshots(
 
 
 def cmd_update(args) -> None:
-    """Handle the update command - incrementally update AI rules."""
+    """Refresh complementary context (default) or legacy incremental rules."""
+    if not getattr(args, "legacy_rules", False):
+        from .commands_context import cmd_context
+        print("update defaults to complementary context refresh "
+              "(use --legacy-rules for old incremental regenerator).")
+        print()
+        cmd_context(args)
+        return
+
     print("=" * 60)
-    print("AI Rules Generator - Incremental Update")
+    print("AI Rules Generator - Incremental Update (LEGACY)")
     print("=" * 60)
     print()
 
@@ -117,7 +129,8 @@ def cmd_update(args) -> None:
     ai_rules_dir = project_root / ".ai-rules"
     if not ai_rules_dir.exists():
         print("No .ai-rules/ directory found.")
-        print("Run 'ai-rules-generator project-init' first to initialize the project.")
+        print("Run 'ai-rules-generator project-init --legacy-rules' first, "
+              "or use `context` / `update` without --legacy-rules.")
         sys.exit(1)
 
     use_ai = not getattr(args, "no_ai", False)
@@ -130,7 +143,17 @@ def cmd_update(args) -> None:
 
     # Scan current project (once)
     print("Scanning project structure...")
-    scan_ctx = scan_project(project_root, max_depth=4)
+    language, frameworks = detect_folder_technology(project_root)
+    scan_config = ProjectConfig(
+        description="(auto-detected project)",
+        is_monorepo=False,
+        primary_language=language or "python",
+        frameworks=frameworks,
+        project_root=project_root,
+    )
+    scan_ctx = scan_project(
+        project_root, scan_config, extract_signatures=True
+    )
     print(f"  Found {len(scan_ctx.flat)} significant folders")
 
     if not old_snapshot:
@@ -207,9 +230,21 @@ def _full_regenerate(
         project_root=project_root,
     )
 
-    # Try to load description from existing project-rules.md
+    # Try to load description from existing AGENTS.md, then project-rules.md.
+    agents_md_file = project_root / "AGENTS.md"
     project_rules_file = project_root / ".ai-rules" / "project-rules.md"
-    if project_rules_file.exists():
+    if agents_md_file.exists():
+        try:
+            first = agents_md_file.read_text(encoding="utf-8").splitlines()
+            for line in first:
+                if line.startswith("# "):
+                    desc = line[2:].strip()
+                    if desc:
+                        config.description = desc
+                    break
+        except OSError:
+            pass
+    elif project_rules_file.exists():
         try:
             content = project_rules_file.read_text(encoding="utf-8")
             for line in content.splitlines():
@@ -221,12 +256,22 @@ def _full_regenerate(
         except OSError:
             pass
 
-    ai_rules_dir = create_shared_ai_rules_directory(
-        project_root, config, base_path, use_ai, ai_provider, ai_model,
-        openai_key, anthropic_key, scan_ctx=scan_ctx
+    google_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    enabled_tools = (
+        user_config.enabled_tools
+        if user_config.enabled_tools
+        else ["cursor", "claude-code"]
     )
-    print(f"  Updated {ai_rules_dir}")
+    link_mode = LinkMode.from_str(getattr(user_config, "link_mode", "symlink") or "symlink")
 
-    enabled_tools = user_config.enabled_tools if user_config.enabled_tools else ["cursor", "claude-code"]
-    generate_all_tool_rules(ai_rules_dir, config, base_path, project_root,
-                           enabled_tools, scan_ctx=scan_ctx)
+    # Delegate to the full single-project pipeline: this rewrites AGENTS.md,
+    # rebuilds the repo map, refreshes Tier-2 .cursor/rules/<folder>.mdc, and
+    # re-runs the linker so tool symlinks survive the update.
+    generate_single_project_rules_setup(
+        config, base_path, project_root, use_ai, ai_provider, ai_model,
+        openai_key, anthropic_key, enabled_tools,
+        google_key=google_key,
+        scan_ctx=scan_ctx,
+        link_mode=link_mode,
+    )
+    print(f"  Updated AGENTS.md + .ai-rules/ + tool entry points")

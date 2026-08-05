@@ -23,12 +23,25 @@ from .orchestration import (
     generate_monorepo_rules,
     generate_single_project_rules,
 )
+from .linker import LinkMode
 
 
 def cmd_project_init(args) -> None:
-    """Handle the project-init command - Sets up rules for a specific project."""
+    """Initialize complementary context (default) or legacy full rules."""
+    if getattr(args, "legacy_rules", False):
+        _cmd_project_init_legacy(args)
+        return
+
+    from .commands_context import cmd_context
+    print("project-init defaults to complementary context (use --legacy-rules for old path).")
+    print()
+    cmd_context(args)
+
+
+def _cmd_project_init_legacy(args) -> None:
+    """Legacy: full AGENTS.md + skills + tool symlinks (pre-context-provider)."""
     print("=" * 60)
-    print("AI Rules Generator - Project Initialization")
+    print("AI Rules Generator - Project Initialization (LEGACY)")
     print("=" * 60)
     print()
     print("This will set up AI rules for this project.")
@@ -50,6 +63,7 @@ def cmd_project_init(args) -> None:
     ai_model = user_config.ai_model
     openai_key = user_config.openai_api_key or os.getenv('OPENAI_API_KEY')
     anthropic_key = user_config.anthropic_api_key or os.getenv('ANTHROPIC_API_KEY')
+    google_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
 
     base_path, project_root = validate_and_resolve_paths(args)
 
@@ -69,44 +83,70 @@ def cmd_project_init(args) -> None:
         ai_provider = "none"
         ai_model = "template"
 
+    enable_ast = not getattr(args, "no_ast", False)
+    enable_graph = not getattr(args, "no_graph", False)
+    global_budget = int(getattr(args, "token_budget", 0) or 1_000_000)
+    graph_token_budget = int(getattr(args, "graph_budget", 0) or 1000)
+    max_tier1_lines = getattr(args, "max_tier1_lines", None)
+    tier_filter = getattr(args, "tier", "all")
+    link_mode = LinkMode.from_str(getattr(args, "link_mode", "symlink") or "symlink")
+
     print()
     print("=" * 60)
-    print("Generating Project Rules")
+    print("Generating Project Rules (legacy)")
     print("=" * 60)
+    print(f"  AST compression:      {'ON' if enable_ast else 'OFF (--no-ast)'}")
+    print(f"  Graph RAG / DKB:      {'ON' if enable_graph else 'OFF (--no-graph)'}")
+    print(f"  Tier filter:          {tier_filter}")
+    print(f"  Global token budget:  {global_budget:,} tokens (--token-budget)")
+    print(f"  Inline repo-map cap:  {graph_token_budget} tokens (--graph-budget)")
+    print(f"  Link mode:            {link_mode.value} (--link-mode)")
     print()
 
     enabled_tools = user_config.enabled_tools if user_config.enabled_tools else ["cursor", "claude-code"]
 
+    scan_ctx = None
+    if enable_ast:
+        try:
+            from .scanner import scan_project
+            scan_ctx = scan_project(
+                project_root, config, extract_signatures=True
+            )
+        except Exception as exc:
+            print(f"  (scan skipped: {exc})")
+
     if config.is_monorepo:
         generate_monorepo_project_rules(
             config, base_path, project_root, use_ai, ai_provider, ai_model,
-            openai_key, anthropic_key, enabled_tools
+            openai_key, anthropic_key, enabled_tools,
+            google_key=google_key,
+            scan_ctx=scan_ctx,
+            enable_graph=enable_graph,
+            enable_ast=enable_ast,
+            graph_token_budget=graph_token_budget,
+            max_tier1_lines=max_tier1_lines,
+            global_budget=global_budget,
+            link_mode=link_mode,
         )
     else:
         generate_single_project_rules_setup(
             config, base_path, project_root, use_ai, ai_provider, ai_model,
-            openai_key, anthropic_key, enabled_tools
+            openai_key, anthropic_key, enabled_tools,
+            google_key=google_key,
+            scan_ctx=scan_ctx,
+            enable_graph=enable_graph,
+            enable_ast=enable_ast,
+            graph_token_budget=graph_token_budget,
+            max_tier1_lines=max_tier1_lines,
+            global_budget=global_budget,
+            link_mode=link_mode,
         )
 
     print()
     print("=" * 60)
-    print("✓ Project initialization complete!")
+    print("✓ Legacy project initialization complete!")
     print("=" * 60)
-    print()
-    print("Files created:")
-    print(f"  - {project_root / '.ai-rules'}/ (shared AI rules - single source of truth)")
-    print(f"  - Rule files for enabled AI coding tools:")
-    available_tools = get_available_tools()
-    for tool in enabled_tools:
-        tool_info = available_tools[tool]
-        file_list = ', '.join(tool_info['files'])
-        print(f"    • {tool_info['name']}: {file_list}")
-    print()
-    print("All rule files reference the shared .ai-rules/ directory.")
-    print("You can now use your selected AI coding tools with consistent rules!")
-    print()
-    print("To change which tools are enabled, run:")
-    print("  ai-rules-generator config edit")
+    print(f"  Prefer `ai-rules-generator context` for complementary packs.")
     print("=" * 60)
 
 

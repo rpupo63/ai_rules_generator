@@ -40,7 +40,7 @@ LANGUAGE_FRAMEWORK_MAP = {
     },
     "go": {
         "frameworks": ["htmx", "temporal"],
-        "rule_file": None,
+        "rule_file": "go.mdc",
         "additional": ["codequality", "clean-code"]
     },
     "kotlin": {

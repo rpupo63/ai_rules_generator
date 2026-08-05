@@ -14,12 +14,17 @@ from dataclasses import dataclass
 
 from .file_utils import read_general_guidelines, read_rule_file, extract_rule_content
 from .config import LANGUAGE_FRAMEWORK_MAP
+from .prompt_xml import build_xml_prompt
+from .stop_rules import render_stop_rules_block
 
 # Import unified AI client from ai_model_picker
 from ai_model_picker import (
     call_ai_simple,
+    call_with_preference,
+    build_preference,
     get_model_api_id,
     get_api_key_with_fallback,
+    load_preference,
 )
 
 # App name for config lookup
@@ -159,117 +164,132 @@ def truncate_rule_content(content: str, max_lines: int = 100) -> str:
 
 
 def build_prompt_header() -> str:
-    """Build prompt header. Max 10 lines."""
-    return """You are an expert at creating AI coding agent rules for Cursor and Claude Code.
-Based on the following guidelines and context, generate a comprehensive,
-example-driven rules document."""
+    """Body of the <role> XML tag. No ## Markdown header."""
+    return (
+        "You are an expert context engineer producing AI coding agent rules "
+        "for Cursor, Claude Code, Windsurf, GitHub Copilot, Warp, and Janie. "
+        "You write specific, example-driven instructions and you follow the "
+        "structural requirements declared in <output_format> exactly."
+    )
 
 
 def build_guidelines_section(general_guidelines: str) -> str:
-    """Build general guidelines section. Max 10 lines."""
-    return f"""## General Guidelines for Effective Rules
-
-{general_guidelines}"""
+    """Body of the <style_guide> tag - just the raw guidelines content."""
+    return general_guidelines
 
 
 def build_context_section(project_context: str) -> str:
-    """Build project context section. Max 10 lines."""
-    return f"""## Project Context
-
-{project_context}"""
+    """Body of the <project_identity> tag."""
+    return project_context
 
 
 def build_reference_rules_section(
     relevant_rules: List[Tuple[str, str]]
 ) -> str:
-    """Build reference rules section with truncation. Max 40 lines."""
+    """Body of the <reference_rules> tag."""
     if not relevant_rules:
-        return "(No specific language/framework rules found - generate general best practices)"
+        return (
+            "(No specific language/framework rules found - generate general "
+            "best practices grounded in the project identity above.)"
+        )
 
-    header = """## Relevant Reference Rules from awesome-cursorrules
-
-The following rules from the awesome-cursorrules repository (https://github.com/awesome-cursorrules/awesome-cursorrules)
-are relevant for this context. These are community-vetted best practices for the specific language/framework combination.
-
-**IMPORTANT:** Use these as reference and incorporate their best practices, but create a CUSTOM, PROJECT-SPECIFIC version that:
-- Follows the general guidelines above
-- Is tailored to the specific project context
-- Includes project-specific examples and patterns
-- References these files when appropriate (e.g., "Following patterns from awesome-cursorrules/python.mdc...")
-
-"""
+    header = (
+        "The following rules from awesome-cursorrules "
+        "(https://github.com/awesome-cursorrules/awesome-cursorrules) are "
+        "community-vetted best practices for the relevant language/framework "
+        "combination.\n\n"
+        "IMPORTANT: Use these as reference and incorporate their best "
+        "practices, but produce a CUSTOM, PROJECT-SPECIFIC version that:\n"
+        "- Follows the style_guide above\n"
+        "- Is tailored to the specific project_identity\n"
+        "- Includes project-specific examples and patterns\n"
+        "- References these files when appropriate "
+        "(e.g., \"Following patterns from awesome-cursorrules/python.mdc...\")\n"
+    )
 
     rule_sections = []
     for rule_name, rule_content in relevant_rules:
         extracted = extract_rule_content(rule_content)
         truncated = truncate_rule_content(extracted, max_lines=100)
         rule_sections.append(
-            f"### Reference: awesome-cursorrules/rules-new/{rule_name}.mdc\n{truncated}"
+            f"<reference name=\"awesome-cursorrules/rules-new/{rule_name}.mdc\">\n"
+            f"{truncated}\n"
+            f"</reference>"
         )
 
-    return header + "\n\n".join(rule_sections)
+    return header + "\n\n" + "\n\n".join(rule_sections)
 
 
 def build_task_section(rule_type: str) -> str:
-    """Build task instructions section. Max 30 lines."""
-    return f"""## Task
-
-Generate a custom rules document for this {rule_type} that:
-
-1. **Follows the general guidelines** - Use specific, example-driven rules with ❌→✅ format
-2. **References the relevant rules above** - Incorporate best practices from the reference rules, but make them project-specific
-3. **Is concise and actionable** - Maximum 500 lines, prefer 200-300 lines
-4. **Includes concrete examples** - Show anti-patterns and correct patterns with actual code
-5. **Uses absolute language** - ALWAYS, NEVER, MUST for critical rules
-6. **Is context-appropriate** - Tailored to the specific project context provided
-"""
+    """Body of the <task> tag - the imperative ask for this turn."""
+    return (
+        f"Generate a custom rules document for this {rule_type} that:\n"
+        "1. Follows the style_guide - use specific, example-driven rules "
+        "with the wrong-then-right format (clearly marked).\n"
+        "2. Incorporates the reference_rules above but makes them "
+        "project-specific.\n"
+        "3. Is concise and actionable - maximum 500 lines, prefer 200-300.\n"
+        "4. Includes concrete code examples (anti-pattern then correct pattern).\n"
+        "5. Uses absolute language (ALWAYS, NEVER, MUST) for critical rules.\n"
+        "6. Is fully tailored to the project_identity, repo_map, and "
+        "tech_stack provided.\n"
+        "7. Adheres to every constraint in stop_rules - do not soften or "
+        "omit any of them."
+    )
 
 
 def build_format_requirements(format_mdc: bool) -> str:
-    """Build format requirements section. Max 20 lines."""
+    """Body of the <output_format> tag - strict schema for the response."""
     if format_mdc:
-        return """## Format Requirements
-
-Generate the content in Cursor MDC format with YAML frontmatter:
-- Include appropriate `description`, `globs`, and `alwaysApply` fields
-- The content after the frontmatter should be the actual rules
-"""
-    else:
-        return """## Format Requirements
-
-Generate the content in markdown format suitable for CLAUDE.md or AGENTS.md:
-- Start with a clear title
-- Use proper markdown formatting
-- Include sections for: Project Context, Technology Stack, Coding Standards, Testing, Common Pitfalls, Commands
-"""
+        return (
+            "Output Cursor MDC format with YAML frontmatter:\n"
+            "- First three lines: `---`, then YAML keys "
+            "(`description`, `globs`, `alwaysApply`), then `---`.\n"
+            "- Content after the frontmatter is the rules body in Markdown.\n"
+            "- Do not wrap the whole response in a code fence.\n"
+            "- Do not echo the <task> or <reference_rules> blocks back."
+        )
+    return (
+        "Output Markdown suitable for CLAUDE.md / AGENTS.md:\n"
+        "- Start with a clear `# Title` line.\n"
+        "- Use the following H2 sections in this order: "
+        "Project Context, Technology Stack, Architecture Snapshot, "
+        "Dev Commands, Coding Standards, Testing, Stop Rules, "
+        "Common Pitfalls.\n"
+        "- Do not wrap the whole response in a code fence.\n"
+        "- Do not echo the <task> or <reference_rules> blocks back."
+    )
 
 
 def build_prompt_footer() -> str:
-    """Build prompt footer. Max 15 lines."""
-    return """
-Generate the rules document now. Focus on being specific, example-driven, and actionable.
-
-**When referencing awesome-cursorrules files:**
-- You can mention them explicitly (e.g., "Following patterns from awesome-cursorrules/python.mdc...")
-- Incorporate their best practices into your custom rules
-- Make everything project-specific and following the general guidelines
-- Don't just copy - synthesize and customize for this specific project context
-"""
+    """Kept for backwards-compatible callers; returned as part of <task>."""
+    return (
+        "When referencing awesome-cursorrules files: mention them explicitly, "
+        "incorporate their best practices, but customize for this specific "
+        "project. Do not copy verbatim - synthesize."
+    )
 
 
 def build_ai_prompt(config: PromptConfig) -> str:
-    """Build AI generation prompt. Max 25 lines."""
-    sections = [
-        build_prompt_header(),
-        build_guidelines_section(config.general_guidelines),
-        build_context_section(config.project_context),
-        build_reference_rules_section(config.relevant_rules),
-        build_task_section(config.rule_type),
-        build_format_requirements(config.format_mdc),
-        build_prompt_footer()
-    ]
+    """
+    Build the AI generation prompt as XML-tagged sections.
 
-    return "\n\n".join(sections)
+    The structure follows `prompt_xml.CANONICAL_SECTION_ORDER` so all callers
+    in the codebase (rule generators, summary generators, future agents) speak
+    a single, model-friendly vocabulary.
+    """
+    sections = {
+        "role": build_prompt_header(),
+        "project_identity": build_context_section(config.project_context),
+        "style_guide": build_guidelines_section(config.general_guidelines),
+        "reference_rules": build_reference_rules_section(config.relevant_rules),
+        "stop_rules": render_stop_rules_block().strip(),
+        "task": build_task_section(config.rule_type)
+                + "\n\n"
+                + build_prompt_footer(),
+        "output_format": build_format_requirements(config.format_mdc),
+    }
+    return build_xml_prompt(sections)
 
 
 # System prompt for rule generation
@@ -295,53 +315,64 @@ def call_ai_api(
     """
     Call AI API to generate rules using unified ai_model_picker client.
 
-    Supports all providers: OpenAI, Anthropic, Google, Mistral, Cohere,
-    DeepSeek, xAI, Meta, Alibaba.
-
-    Parameters
-    ----------
-    prompt : str
-        The prompt to send to the AI.
-    provider : str
-        AI provider (openai, anthropic, google, mistral, cohere, deepseek, xai, meta, alibaba, none).
-    model : str
-        Model name (display name or API ID).
-    openai_key, anthropic_key, google_key, mistral_key, cohere_key : str | None
-        Optional explicit API keys for specific providers.
-    **extra_keys : dict
-        Additional provider keys (deepseek_key, xai_key, meta_key, alibaba_key).
-
-    Returns
-    -------
-    str | None
-        Generated content, or None if provider is "none" or call fails.
+    Uses ModelPreference instructions (when set) as an addendum to the
+    default rule-generation system prompt. API keys resolve locally via
+    explicit args, config, or env — never from the preference handoff.
     """
     if provider == "none":
         return None
 
-    # Map legacy key parameters to provider
+    # Map legacy key parameters to provider (plus any ``{provider}_key`` extras)
     key_map = {
         "openai": openai_key,
         "anthropic": anthropic_key,
         "google": google_key,
         "mistral": mistral_key,
         "cohere": cohere_key,
-        "deepseek": extra_keys.get("deepseek_key"),
-        "xai": extra_keys.get("xai_key"),
-        "meta": extra_keys.get("meta_key"),
-        "alibaba": extra_keys.get("alibaba_key"),
     }
+    for key_name, key_value in extra_keys.items():
+        if key_name.endswith("_key") and key_value:
+            key_map[key_name[: -len("_key")]] = key_value
 
     api_key = key_map.get(provider)
+    if not api_key:
+        api_key = get_api_key_with_fallback(provider, APP_NAME)
 
-    return call_ai_simple(
-        prompt=prompt,
+    pref = load_preference(APP_NAME)
+    # Prefer caller provider/model when generating; keep saved instructions
+    runtime_pref = build_preference(
         provider=provider,
         model=model,
-        api_key=api_key,
+        instructions=pref.instructions,
+        temperature=pref.temperature,
+        max_tokens=pref.max_tokens,
         app_name=APP_NAME,
-        system_prompt=system_prompt or RULE_GENERATION_SYSTEM_PROMPT,
     )
+
+    base_system = system_prompt or RULE_GENERATION_SYSTEM_PROMPT
+    if runtime_pref.instructions:
+        effective_system = f"{base_system}\n\nAdditional instructions:\n{runtime_pref.instructions}"
+    else:
+        effective_system = base_system
+
+    result = call_with_preference(
+        prompt=prompt,
+        preference=runtime_pref,
+        app_name=APP_NAME,
+        api_key=api_key,
+        system_prompt=effective_system,
+    )
+    if result is None:
+        # Fallback for environments without preference wiring
+        return call_ai_simple(
+            prompt=prompt,
+            provider=provider,
+            model=model,
+            api_key=api_key,
+            app_name=APP_NAME,
+            system_prompt=effective_system,
+        )
+    return result.content
 
 
 def generate_ai_rules(

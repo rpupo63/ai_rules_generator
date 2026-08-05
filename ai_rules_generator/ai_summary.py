@@ -8,6 +8,7 @@ from typing import List, Optional, Tuple
 
 from .ai_generator import call_ai_api
 from .models import ProjectConfig
+from .prompt_xml import build_xml_prompt
 from .scanner import FolderInfo
 
 
@@ -66,59 +67,90 @@ def generate_ai_folder_summary(
         if not file_contents_prompt:
             continue
 
-        project_languages = list(project_config.language_stacks.keys()) if project_config.is_monorepo and project_config.language_stacks else [project_config.primary_language]
-        language_info = f"Project Languages: {', '.join(project_languages)}"
-        frameworks_info = f"Frameworks: {', '.join(project_config.frameworks)}" if project_config.frameworks else ""
+        project_languages = (
+            list(project_config.language_stacks.keys())
+            if getattr(project_config, "is_monorepo", False)
+            and getattr(project_config, "language_stacks", None)
+            else [project_config.primary_language]
+        )
+        frameworks = project_config.frameworks or []
+        children_preview = (
+            ", ".join(f"`{s.name}/`" for s in folder.children[:5]) or "(none)"
+        )
 
-        # Construct the main prompt
-        prompt = [
-            f"**Folder Context:**",
-            f"- Path: `{folder.path}/`",
-            f"- Purpose: {folder.purpose}",
-            f"- {language_info}",
-            f"- {frameworks_info}" if frameworks_info else "",
-            f"- Child Subfolders: {', '.join([f'`{s.name}/`' for s in folder.children[:5]]) or '(none)'}",
-            f"\n**Task:**",
-        ]
+        project_identity = (
+            f"- Folder path: `{folder.path}/`\n"
+            f"- Folder purpose (heuristic): {folder.purpose}\n"
+            f"- Child subfolders: {children_preview}"
+        )
+        tech_stack = (
+            f"- Languages: {', '.join(project_languages)}\n"
+            + (f"- Frameworks: {', '.join(frameworks)}" if frameworks else "")
+        ).strip()
 
         if is_first_batch:
-            prompt.extend([
-                "1. Write a concise **folder summary** (4-6 sentences) explaining the folder's overall role, how its files collaborate, and its importance to the project.",
-                "2. For each file below, provide a **technical summary** (3-5 sentences) detailing its specific responsibility, key functions/classes, and its relationship with other files in this folder.",
-                "\n**Output Format:**",
-                "Your response MUST strictly follow this Markdown structure:",
-                "## Overview",
-                "Your summary of the folder's purpose and how the files work together. (4-6 sentences)",
-                "",
-                "## File: <filename>",
-                "(Your file summary here)",
-                "",
-                "## File: <another_filename>",
-                "(Your file summary here)",
-            ])
+            task = (
+                "1. Write a concise folder summary (4-6 sentences) explaining "
+                "the folder's overall role, how its files collaborate, and "
+                "its importance to the project.\n"
+                "2. For each file below, provide a technical summary (3-5 "
+                "sentences) detailing its specific responsibility, key "
+                "functions/classes, and its relationship with other files in "
+                "this folder."
+            )
+            output_format = (
+                "Respond in Markdown using EXACTLY this structure (no extra "
+                "preamble, no closing remarks):\n\n"
+                "## Overview\n"
+                "<4-6 sentence summary of the folder>\n\n"
+                "## File: <filename>\n"
+                "<3-5 sentence technical summary>\n\n"
+                "## File: <another_filename>\n"
+                "<3-5 sentence technical summary>"
+            )
         else:
-            prompt.extend([
-                "1. For each file below, provide a **technical summary** (3-5 sentences) detailing its specific responsibility, key functions/classes, and its relationship with other files in this folder.",
-                "\n**Output Format:**",
-                "Your response MUST strictly follow this Markdown structure:",
-                "## File: <filename>",
-                "(Your file summary here)",
-                "",
-                "## File: <another_filename>",
-                "(Your file summary here)",
-            ])
+            task = (
+                "For each file below, provide a technical summary (3-5 "
+                "sentences) detailing its specific responsibility, key "
+                "functions/classes, and its relationship with other files in "
+                "this folder."
+            )
+            output_format = (
+                "Respond in Markdown using EXACTLY this structure (no extra "
+                "preamble, no closing remarks):\n\n"
+                "## File: <filename>\n"
+                "<3-5 sentence technical summary>\n\n"
+                "## File: <another_filename>\n"
+                "<3-5 sentence technical summary>"
+            )
 
-        prompt.append("\n**File Contents:**\n" + "\n".join(file_contents_prompt))
+        prompt_text = build_xml_prompt({
+            "role": (
+                "You are an expert at analyzing codebases and explaining how "
+                "files work together within a folder. Your descriptions are "
+                "specific, technical, and actionable for an AI coding "
+                "assistant."
+            ),
+            "project_identity": project_identity,
+            "tech_stack": tech_stack,
+            "input_code": "\n".join(file_contents_prompt),
+            "task": task,
+            "output_format": output_format,
+        })
 
-        # Make the single batched API call
         raw_summary = call_ai_api(
-            prompt="\n".join(prompt),
+            prompt=prompt_text,
             provider=ai_provider,
             model=ai_model,
             openai_key=openai_key,
             anthropic_key=anthropic_key,
             google_key=google_key,
-            system_prompt="You are an expert at analyzing codebases and explaining how files work together within a folder. Your descriptions should be specific, technical, and actionable for an AI coding assistant.",
+            system_prompt=(
+                "You are an expert at analyzing codebases and explaining how "
+                "files work together within a folder. Your descriptions "
+                "should be specific, technical, and actionable for an AI "
+                "coding assistant."
+            ),
         )
 
         if not raw_summary:

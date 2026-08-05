@@ -14,7 +14,7 @@ ALWAYS_SKIP_DIRS: Set[str] = {
     # Version control
     ".git", ".svn", ".hg",
     # AI tool config (we generate these, don't scan them)
-    ".cursor", ".claude", ".ai-rules",
+    ".cursor", ".claude", ".ai-rules", ".ai-context", ".agents",
     # Package managers / dependencies
     "node_modules", ".pnpm", "bower_components",
     # Python environments

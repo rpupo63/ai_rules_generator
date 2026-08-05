@@ -142,10 +142,12 @@ def generate_project_overview(
     openai_key: Optional[str] = None,
     anthropic_key: Optional[str] = None,
     google_key: Optional[str] = None,
+    *,
+    repo_map_digest: str = "",
 ) -> str:
     """
     Generate the high-level project-rules.md content.
-    Tier 1: project overview + folder tree with purposes.
+    Tier 1: project overview + folder tree with purposes + repo-map digest.
     Tier 2 (optional): architectural insights from LLM.
     """
     sections: List[str] = []
@@ -159,6 +161,12 @@ def generate_project_overview(
     # Folder tree overview (from scanner)
     sections.append(scan_ctx.prompt_text)
     sections.append("")
+
+    if repo_map_digest.strip():
+        sections.append("## Repo Map (DKB / Graph RAG)")
+        sections.append("")
+        sections.append(repo_map_digest.strip())
+        sections.append("")
 
     # Reference to per-folder docs
     sections.append("## Detailed Structure")

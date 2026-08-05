@@ -547,14 +547,21 @@ alwaysApply: true
 
 
 def generate_general_coding_principles() -> str:
-    """Generate general coding principles section. Max 45 lines."""
+    """
+    Long-form general coding principles.
+
+    Lives in Tier 3 (`.ai-rules/skills/coding-principles.md`) under the 2-4-2
+    architecture, so it is *not* loaded on every prompt. The Tier-1 always-on
+    files in `.cursor/rules/00-identity.mdc` and `01-baseline.mdc` carry a
+    condensed digest; the agent pulls this skill when it needs depth.
+    """
     return """## General Coding Principles
 
-The following principles should guide all code generation:
+The following principles should guide all code generation.
 
 ### Rule Effectiveness
 - Use specific, example-driven rules rather than vague descriptions
-- Include concrete code examples with ❌→✅ format showing anti-patterns and correct patterns
+- Include concrete code examples in WRONG -> CORRECT format
 - Apply absolute language (ALWAYS, NEVER, MUST) for critical rules
 - Keep rules concise and context-specific
 
@@ -569,13 +576,13 @@ The following principles should guide all code generation:
 - NEVER commit API keys, passwords, tokens, or .env files
 - Validate ALL user input using schema validation
 - Never use `eval()`, `Function()`, or dynamic code execution
-- Use parameterized queries only—never string concatenation for SQL
+- Use parameterized queries only - never string concatenation for SQL
 - Hash passwords with bcrypt (minimum 10 rounds)
 - Apply Content-Security-Policy headers
 
 ### Error Handling
 - Use Result<T> or similar patterns for error handling
-- Never return null for error cases—use explicit error types
+- Never return null for error cases - use explicit error types
 - Log errors appropriately with context
 - Handle edge cases gracefully
 - Provide user-friendly error messages

@@ -145,12 +145,42 @@ def detect_js_frameworks(folder_path: Path) -> List[str]:
         return []
 
 
+def detect_go_frameworks(folder_path: Path) -> List[str]:
+    """Detect common Go frameworks from go.mod require lines."""
+    go_mod = folder_path / "go.mod"
+    if not go_mod.exists():
+        return []
+    try:
+        content = go_mod.read_text(encoding="utf-8").lower()
+    except OSError:
+        return []
+
+    # keyword in go.mod → short framework label
+    framework_map = (
+        ("github.com/go-chi/chi", "chi"),
+        ("gorm.io/gorm", "gorm"),
+        ("github.com/gin-gonic/gin", "gin"),
+        ("github.com/labstack/echo", "echo"),
+        ("github.com/gofiber/fiber", "fiber"),
+        ("github.com/gorilla/mux", "mux"),
+        ("google.golang.org/grpc", "grpc"),
+        ("github.com/aws/aws-sdk-go", "aws-sdk"),
+    )
+    detected: List[str] = []
+    for needle, label in framework_map:
+        if needle in content and label not in detected:
+            detected.append(label)
+    return detected
+
+
 def detect_frameworks(folder_path: Path, language: Optional[str]) -> List[str]:
     """Detect frameworks for language. Max 15 lines."""
     if language == "python":
         return detect_python_frameworks(folder_path)
     elif language in ["typescript", "javascript"]:
         return detect_js_frameworks(folder_path)
+    elif language == "go":
+        return detect_go_frameworks(folder_path)
     else:
         return []
 
