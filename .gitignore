@@ -165,3 +165,7 @@ _repos/
 
 # Test fixtures (downloaded repos)
 tests/tmpq87_trbl/
+
+# End-to-end pipeline evaluation outputs (regenerable via the driver
+# scripts inside; see test-results/README.md).
+test-results/

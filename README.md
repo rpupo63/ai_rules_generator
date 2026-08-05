@@ -1,16 +1,18 @@
 # AI Rules Generator
 
-A CLI tool that generates comprehensive AI coding agent rules for Cursor and Claude Code based on your project configuration and best practices.
+**Edit-scoped context for agents**: give an LLM the parent-folder roles, blast-radius neighborhood, and matched `AGENTS.md` contracts for the path it is about to change—without dumping the whole repo or overwriting your constitution.
+
+Primary agent affordance is `context for <path>`. Always-on `.ai-context/CODEBASE.md` stays a thin orientation card (entrypoints + evidenced conventions when `AGENTS.md` is already rich). Cursor/Claude rule emitters remain behind `--legacy-rules` / `--emit-cursor-rules`.
 
 ## Features
 
-- **Interactive Setup**: Configure once, use everywhere - no shell config editing needed!
-- **Multi-Tool Support**: Generates rule files for 6 AI coding tools (Cursor, Claude Code, Windsurf, GitHub Copilot, Warp, Janie)
-- **Shared AI Rules**: Creates `.ai-rules/` directory - single source of truth referenced by all tools
-- **Multiple AI Providers**: Support for OpenAI and Anthropic Claude models
-- **Monorepo Support**: Automatically detects and generates rules for each package
-- **Language & Framework Specific**: Tailored rules for 20+ languages and 100+ frameworks
-- **Template Fallback**: Works even without AI API keys using template-based generation
+- **Edit packs**: `context for <path>` — ancestors + call/used-by neighborhood + AGENTS topic slices under a token budget
+- **Complementary always-on pack**: `.ai-context/CODEBASE.md`; never rewrites user `AGENTS.md` body outside a delimited pointer
+- **Constitution-aware**: thin CODEBASE when purpose/architecture/commands already live in `AGENTS.md`
+- **Polyglot evidence**: multi-stack detection (Go, TS, Python, Godot, Compose/ops, shell) including Go frameworks from `go.mod`
+- **Deterministic by default**: AST + graph ranking without API keys; optional `--ai` folder enrichment
+- **Legacy rules path**: `--legacy-rules` still emits full AGENTS.md + `.ai-rules/skills` + tool symlinks
+- **Optional Cursor Tier-2**: `--emit-cursor-rules` for glob-scoped `.mdc`
 
 ## Quick Start
 
@@ -76,7 +78,74 @@ This will:
 - **macOS**: `~/Library/Application Support/ai-rules-generator/config.json`
 - **Windows**: `%APPDATA%\ai-rules-generator\config.json`
 
-### 3. Generate Rules for Your Project
+### 3. Edit pack before changing a deep file (recommended for agents)
+
+```bash
+ai-rules-generator context for backend/seed/04_classes/foo.go --budget 2500
+# multiple paths:
+ai-rules-generator context for backend/api/handlers.go frontend/src/lib/api.ts
+# optional: JSON + write under .ai-context/edits/
+ai-rules-generator context for backend/api/handlers.go --json --write
+```
+
+An edit pack includes (budgeted, highest priority kept first):
+
+1. Matched `AGENTS.md` contract slices (architecture / gotchas / seed / …)
+2. Ancestor folder one-liners (`backend/` → `backend/seed/` → …)
+3. Inbound **Used by** (blast radius) and outbound calls/deps from the AST graph
+4. Local symbols; evidenced conventions when not already in AGENTS
+
+**Agent pattern:** before editing unfamiliar nested paths, run `context for` on those paths and load the markdown into the session. Skill: [`skills/context-for/SKILL.md`](skills/context-for/SKILL.md). Do not treat awesome-cursorrules practices as repo law.
+
+Warm cache: after the first cold run, unchanged source trees reuse `.ai-context/cache/` + `graph.json` and skip AST scan (target &lt;1s). Local check:
+
+```bash
+./scripts/smoke_edit_pack.sh /path/to/repo backend/api/foo.go
+```
+
+### 4. Always-on orientation pack (optional)
+
+```bash
+ai-rules-generator context
+# or: ai-rules-generator project-init
+# or: ai-rules-generator update
+```
+
+Writes:
+
+- `.ai-context/CODEBASE.md` — entrypoints + **Conventions**; full What/How/Why only when `AGENTS.md` is thin
+- `.ai-context/modules/*.md` — surface-root digests (when not thin-skipped)
+- `AGENTS.md` — delimited pointer (additive when thin; rewrites stale pointers to `context for` when rich)
+
+**Conventions** are gleaned from the repo (not invented): git habits, tsconfig/eslint/zod, `.agent-sessions/`, Memory MCP, `.agents/permissions.json`.
+
+Off by default (opt in):
+
+- `--practices` → `.ai-context/practices/` from bundled awesome-cursorrules (generic; prefer edit packs)
+- `--write-graph` → `.ai-context/graph/` sidecars (edit packs reuse `graph.json` when fresh)
+
+Folder digests (no pack rewrite):
+
+```bash
+ai-rules-generator context show backend/api
+ai-rules-generator context show backend/api --full   # skeleton + call-flow
+```
+
+Optional LLM folder overviews (importance-ranked, capped; not used by edit packs):
+
+```bash
+ai-rules-generator context --ai --ai-max-folders 12
+```
+
+Identity bootstrap stays with Sync `install-repo-identity.sh`.
+
+Legacy full-rules generation:
+
+```bash
+ai-rules-generator project-init --legacy-rules
+```
+
+### 5. Generate Rules for Your Project (legacy docs below)
 
 Navigate to your project and run:
 

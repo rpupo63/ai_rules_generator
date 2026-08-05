@@ -20,7 +20,7 @@ setup(
     long_description_content_type="text/markdown",
     author="AI Rules Generator Contributors",
     license="MIT",
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     packages=["ai_rules_generator"],
     package_data={
         "ai_rules_generator": [
@@ -30,7 +30,14 @@ setup(
         ],
     },
     include_package_data=True,
-    install_requires=[],
+    install_requires=[
+        "ai-model-picker>=0.2.0",
+        # Phase 3 - Tree-sitter AST compression
+        "tree-sitter>=0.21",
+        "tree-sitter-language-pack>=0.2.0",
+        # Phase 4 - Graph RAG (PageRank lives in networkx)
+        "networkx>=3.0",
+    ],
     extras_require={
         "openai": ["openai>=1.0.0"],
         "anthropic": ["anthropic>=0.18.0"],
@@ -49,7 +56,6 @@ setup(
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
