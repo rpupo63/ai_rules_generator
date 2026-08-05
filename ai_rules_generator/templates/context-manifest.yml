@@ -1,0 +1,11 @@
+# Repo-local knobs for `ai-rules-generator context` / `update`.
+# Nightly timers read this so they need no per-repo arg list.
+# Copy to `.ai-context/context-manifest.yml` (or repo-root `context-manifest.yml`).
+version: 1
+budget_tokens: 1000          # match Aider's --map-tokens default
+languages: []                # empty = all supported; e.g. [bash, python, yaml]
+always: []                   # paths always listed in CODEBASE.md
+never: []                    # glob patterns excluded from the graph (also grep hygiene)
+seed_from: [git-diff, git-recent]
+emit: [map]                  # add cursor-rules to enable capped .mdc emission
+# emit: [map, cursor-rules]  # not: modules, practices, xml

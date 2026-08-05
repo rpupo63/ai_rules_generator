@@ -33,9 +33,9 @@
   </provides>
 
   <releases>
-    <release version="1.0.0" date="2024-12-27">
+    <release version="2.0.0" date="2026-08-04">
       <description>
-        <p>Initial release</p>
+        <p>Structure-only maps (≤1k tokens), context/update CLI, context-manifest.yml</p>
         <ul>
           <li>Multi-tool support for 6 AI coding assistants</li>
           <li>Interactive configuration setup</li>

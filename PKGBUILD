@@ -1,6 +1,6 @@
 # Maintainer: Beto
 pkgname=ai-rules-generator
-pkgver=1.0.0
+pkgver=2.0.0
 pkgrel=1
 pkgdesc="Structure-only codebase context maps plus optional Cursor rules"
 arch=('any')

@@ -19,10 +19,11 @@ from ai_rules_generator.token_budget import (
 )
 
 
-def test_default_cap_is_one_million_tokens():
-    assert DEFAULT_GLOBAL_BUDGET == 1_000_000
+def test_default_cap_is_one_thousand_tokens():
+    """Aider-like ~1k default (pack-era 1_000_000 retired in C4-3)."""
+    assert DEFAULT_GLOBAL_BUDGET == 1000
     b = TokenBudget()
-    assert b.cap == 1_000_000
+    assert b.cap == 1000
 
 
 def test_try_spend_is_atomic_on_failure():

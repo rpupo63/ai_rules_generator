@@ -2,22 +2,24 @@
 Global token budget for generated rule artifacts.
 
 A single `TokenBudget` instance is constructed in the orchestrator and
-threaded through every emission path (Tier-1, Tier-2, Tier-3, repo-map,
-CLAUDE.md).  Each emit attempt either:
+threaded through every emission path.  Each emit attempt either:
 
-  * `force_spend`s text that *must* be written (Stop Rules, identity,
-    folder headers); this can exceed the cap but is logged.
-  * `try_spend`s optional text; this is atomic - the budget is only
+  * `force_spend`s text that *must* be written; this can exceed the cap
+    but is logged.
+  * `try_spend`s optional text; this is atomic — the budget is only
     debited if the text fits.
-  * `fit_or_truncate`s text that should fit if at all possible - it
+  * `fit_or_truncate`s text that should fit if at all possible — it
     returns a truncated string when the full text would not fit but a
     useful prefix would.
 
 The budget counts characters' worth of tokens (4 chars ~= 1 token, same
 heuristic the rest of the codebase uses via
 `ast_compression.estimate_tokens`).  Only LLM-consumable artifacts are
-counted - sidecar JSON like `.ai-rules/graph/graph.json` is excluded
+counted — sidecar JSON like `.ai-context/graph/graph.json` is excluded
 because no AI tool ingests it directly.
+
+Default cap is ~1k tokens (Aider's `--map-tokens` default).  Anything that
+does not fit is, by construction, something the agent should grep for.
 """
 
 from __future__ import annotations
@@ -28,7 +30,9 @@ from typing import List, Optional, Tuple
 from .ast_compression import estimate_tokens
 
 
-DEFAULT_GLOBAL_BUDGET = 1_000_000
+# Match Aider's --map-tokens default.  Former pack-era default was 1_000_000.
+DEFAULT_GLOBAL_BUDGET = 1000
+DEFAULT_MAP_BUDGET = 1000
 
 
 @dataclass
@@ -269,6 +273,7 @@ def _truncate_at_line(text: str, char_budget: int) -> str:
 
 __all__ = [
     "DEFAULT_GLOBAL_BUDGET",
+    "DEFAULT_MAP_BUDGET",
     "Rejection",
     "Spend",
     "TokenBudget",
