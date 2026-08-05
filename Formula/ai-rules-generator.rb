@@ -34,7 +34,6 @@ class AiRulesGenerator < Formula
            This will generate AI rules for your project
 
       Optional AI providers can be installed separately:
-        pip3 install openai anthropic
 
       For more information, visit: https://github.com/rpupo63/ai-rules-generator
     EOS

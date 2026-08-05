@@ -32,14 +32,10 @@ modules:
 
       # Optional dependencies
       - type: file
-        url: https://files.pythonhosted.org/packages/source/o/openai/openai-1.6.1.tar.gz
         sha256: REPLACE_WITH_ACTUAL_SHA256
-        dest-filename: openai-1.6.1.tar.gz
 
       - type: file
-        url: https://files.pythonhosted.org/packages/source/a/anthropic/anthropic-0.18.1.tar.gz
         sha256: REPLACE_WITH_ACTUAL_SHA256
-        dest-filename: anthropic-0.18.1.tar.gz
 
   - name: metadata
     buildsystem: simple

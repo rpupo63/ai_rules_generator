@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ai-rules-generator"
 version = "1.0.0"
-description = "Complementary codebase context provider (What/How/Why) for any LLM, plus optional legacy AI coding agent rules"
+description = "Structure-only codebase context maps (definitions/references) plus optional Cursor rules"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
 authors = [
     {name = "AI Rules Generator Contributors"}
 ]
-keywords = ["cursor", "claude", "ai", "rules", "code-generation", "coding-assistant"]
+keywords = ["cursor", "ai", "rules", "code-generation", "coding-assistant", "repo-map"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -26,31 +26,14 @@ classifiers = [
 ]
 
 dependencies = [
-    "ai-model-picker>=0.2.0",
-    # Phase 3 - AST compression (Tree-sitter).  `tree-sitter-language-pack`
-    # is preferred for Python 3.12+ wheel coverage; `tree-sitter-languages`
-    # is accepted as a fallback at runtime.
-    "tree-sitter>=0.21",
-    "tree-sitter-language-pack>=0.2.0; python_version >= '3.9'",
-    # Phase 4 - Graph RAG (DKB).  PageRank lives in networkx.
-    "networkx>=3.0",
+    # Sole runtime dependency: grammars + tree-sitter bindings.
+    # networkx is optional (PageRank); in-degree ranking is the fallback.
+    "tree-sitter-language-pack>=0.2.0",
 ]
 
 [project.optional-dependencies]
-openai = ["openai>=1.0.0"]
-anthropic = ["anthropic>=0.18.0"]
-google = ["google-generativeai>=0.3.0"]
-mistral = ["mistralai>=0.1.0"]
-cohere = ["cohere>=5.0.0"]
-alibaba = ["dashscope>=1.0.0"]
-all = [
-    "openai>=1.0.0",
-    "anthropic>=0.18.0",
-    "google-generativeai>=0.3.0",
-    "mistralai>=0.1.0",
-    "cohere>=5.0.0",
-    "dashscope>=1.0.0",
-]
+rank = ["networkx>=3.0"]
+dev = ["pytest>=7.0", "networkx>=3.0"]
 
 [project.scripts]
 ai-rules-generator = "ai_rules_generator:main"
@@ -68,7 +51,5 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 ai_rules_generator = [
-    "awesome-cursorrules/**/*",
-    "ai_general_guidelines.md",
+    "queries/**/*",
 ]
-

@@ -26,7 +26,6 @@ from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Sequence
 
 from .stop_rules import render_stop_rules_block
-from .ten_section_template import SECTIONS, Section
 from .models import ProjectConfig
 
 

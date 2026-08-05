@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from typing import Any, List, Optional
 
-from .generators import generate_project_context
 from .models import ProjectConfig
 from .stop_rules import render_stop_rules_block
 
@@ -201,7 +200,14 @@ def render_agents_md(
         "Edit this file - not the symlinked tool entry points."
     )
 
-    parts.append(generate_project_context(config).strip())
+    overview = (
+        f"## Project Overview\n\n"
+        f"{config.description}\n\n"
+        f"- Primary language: `{config.primary_language}`\n"
+        f"- Frameworks: "
+        f"{', '.join(config.frameworks) if config.frameworks else '(none)'}\n"
+    )
+    parts.append(overview.strip())
 
     parts.append(
         "## Optimization Goals\n\n"

@@ -1,0 +1,13 @@
+Vendored tree-sitter tag queries
+================================
+
+The `*-tags.scm` files in this directory (except `gdscript-tags.scm`) are
+copied from Aider (https://github.com/Aider-AI/aider), specifically the
+`aider/queries/tree-sitter-language-pack/` set (plus `typescript-tags.scm`
+from `aider/queries/tree-sitter-languages/`).
+
+Aider is licensed under the Apache License, Version 2.0:
+https://www.apache.org/licenses/LICENSE-2.0
+
+Copyright notices and license text for Aider apply to those vendored files.
+`gdscript-tags.scm` is original to this project (MIT, same as the package).

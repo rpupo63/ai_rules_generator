@@ -17,6 +17,8 @@ ALWAYS_SKIP_DIRS: Set[str] = {
     ".cursor", ".claude", ".ai-rules", ".ai-context", ".agents",
     # Package managers / dependencies
     "node_modules", ".pnpm", "bower_components",
+    # Vendored third-party trees (structure-only: never ingest)
+    "vendor", "third_party", "third-party",
     # Python environments
     ".venv", "venv", "env", ".env", "__pycache__", ".mypy_cache",
     ".pytest_cache", ".ruff_cache", ".tox", "*.egg-info",
@@ -44,6 +46,19 @@ ALWAYS_SKIP_DIRS: Set[str] = {
     # Caching
     ".parcel-cache", ".cache", ".sass-cache",
 }
+
+# Extra path substrings / patterns from fleet rollout-exclude.txt
+ROLLOUT_EXCLUDE_SUBSTRINGS: Tuple[str, ...] = (
+    "llama.cpp",
+    "_hyprhdr/Hyprland",
+    "_hyprhdr/hl-sweet",
+    "pupos_claude_code",
+    ".package-manager-repos/aur",
+    ".package-manager-repos/homebrew",
+    ".package-manager-repos/winget-pkgs",
+    "/Scope/",
+    "Scope/",
+)
 
 # File patterns that indicate auto-generated content
 GENERATED_FILE_PATTERNS: List[str] = [
@@ -227,6 +242,11 @@ def should_skip_dir(
         rel = str(dir_path.relative_to(project_root)).replace("\\", "/")
     except ValueError:
         rel = name
+
+    abs_norm = str(dir_path.resolve()).replace("\\", "/")
+    for substr in ROLLOUT_EXCLUDE_SUBSTRINGS:
+        if substr in rel or substr in abs_norm:
+            return True
 
     for pattern in GENERATED_DIR_PATTERNS:
         if rel == pattern or rel.endswith(f"/{pattern}") or name == pattern:

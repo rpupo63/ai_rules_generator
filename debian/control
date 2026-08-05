@@ -15,7 +15,6 @@ Rules-Requires-Root: no
 Package: ai-rules-generator
 Architecture: all
 Depends: ${python3:Depends}, ${misc:Depends}, python3 (>= 3.8)
-Recommends: python3-openai, python3-anthropic
 Description: CLI tool for generating AI coding assistant rules
  AI Rules Generator is a powerful CLI tool that creates customized
  AI coding assistant rules based on your project configuration.

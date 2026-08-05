@@ -2,14 +2,13 @@
 pkgname=ai-rules-generator
 pkgver=1.0.0
 pkgrel=1
-pkgdesc="A CLI tool that generates comprehensive AI coding agent rules for Cursor and Claude Code"
+pkgdesc="Structure-only codebase context maps plus optional Cursor rules"
 arch=('any')
 url="https://github.com/rpupo63/ai-rules-generator"
 license=('MIT')
-depends=('python' 'ai-model-picker')
+depends=('python' 'python-tree-sitter-language-pack')
 optdepends=(
-    'python-openai: For OpenAI provider support'
-    'python-anthropic: For Anthropic Claude provider support'
+    'python-networkx: PageRank ranking (in-degree fallback without it)'
 )
 makedepends=('python-build' 'python-installer' 'python-wheel' 'python-setuptools')
 source=()

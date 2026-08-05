@@ -1,11 +1,1 @@
-# Core dependencies
-ai-model-picker>=0.2.0
-
-# Context-engineering pipeline (Phase 3 + 4)
-tree-sitter>=0.21
-tree-sitter-language-pack>=0.2.0; python_version >= "3.9"
-networkx>=3.0
-
-# Optional: AI provider SDKs (install as needed)
-openai>=1.0.0          # For OpenAI provider
-anthropic>=0.18.0      # For Anthropic Claude provider
+tree-sitter-language-pack>=0.2.0
