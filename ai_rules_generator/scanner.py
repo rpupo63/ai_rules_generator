@@ -12,6 +12,11 @@ from dataclasses import dataclass, field
 from .ai_generator import call_ai_api
 from .models import ProjectConfig
 
+from .ast_compression import (
+    extract_skeleton as ast_extract_skeleton,
+    get_language_rule as ast_get_language_rule,
+    Skeleton as ASTSkeleton,
+)
 from .exclusions import (
     get_exclusion_context,
     should_skip_dir,
@@ -47,6 +52,10 @@ class FolderInfo:
     public_api: List[str] = field(default_factory=list)
     key_dependencies: List[str] = field(default_factory=list)
     ai_folder_summary: str = ""  # LLM-generated folder-level summary
+    # AST-compressed skeletons for this folder's source files; one per file
+    # that the Tree-sitter layer could parse.  Empty when grammars are missing
+    # or the folder has no supported source files.
+    skeletons: List["ASTSkeleton"] = field(default_factory=list)
 
 
 @dataclass
@@ -77,6 +86,12 @@ GO_FOLDER_PURPOSE_MAP = {
     "repo": "Database repository interfaces and implementations",
     "repositories": "Database repository interfaces and implementations",
     "middleware": "HTTP middleware functions",
+    "prompts": "LLM prompt builders",
+    "llmextractor": "LLM-based structured data extraction",
+    "pdfextractor": "PDF text/layout extraction",
+    "resumeparser": "Resume parsing pipeline",
+    "transcriptparser": "Transcript parsing",
+    "parserdto": "Parser data-transfer objects",
 }
 
 # Common folder name -> purpose mappings
@@ -97,8 +112,21 @@ FOLDER_PURPOSE_MAP = {
     "views": "view/page components",
     "templates": "template files",
     "widgets": "widget components",
+    "tailoring": "resume / content tailoring UI",
+    "resume": "resume UI components",
+    "resumeformats": "resume format renderers",
+    "popup": "browser extension popup UI",
+    "content": "browser extension content scripts",
+    "background": "browser extension background / service worker",
+    "parsers": "content / page parsers",
     # Data / Logic
     "models": "GORM data models and database schemas",
+    "prompts": "LLM prompt builders",
+    "llmextractor": "LLM-based structured data extraction",
+    "pdfextractor": "PDF text/layout extraction",
+    "resumeparser": "Resume parsing pipeline",
+    "transcriptparser": "Transcript parsing",
+    "parserdto": "Parser data-transfer objects",
     "schemas": "validation schemas",
     "types": "type definitions",
     "interfaces": "interface definitions",
@@ -401,16 +429,36 @@ def _infer_file_role(file_path: Path) -> str:
 
 
 def _infer_folder_purpose(folder_name: str, contents: List[str]) -> str:
-    """Infer the purpose of a folder from its name and contents."""
-    name_lower = folder_name.lower()
+    """Infer the purpose of a folder from its name and contents.
 
-    # Go-specific direct match (higher priority)
+    Prefer the leaf path segment's specific map entry (e.g. `llmextractor`)
+    over a parent generic like `services`.
+    """
+    # Support full relative paths: use leaf token first, then whole path.
+    raw = (folder_name or "").replace("\\", "/").strip("/")
+    leaf = raw.split("/")[-1] if raw else ""
+    name_lower = leaf.lower()
+
+    # Go-specific / specific leaf match (higher priority than parent generics)
     if name_lower in GO_FOLDER_PURPOSE_MAP:
         return GO_FOLDER_PURPOSE_MAP[name_lower]
 
-    # Common direct match
+    # Common direct match on leaf
     if name_lower in FOLDER_PURPOSE_MAP:
         return FOLDER_PURPOSE_MAP[name_lower]
+
+    # Token hints in leaf (before falling back to parent segment maps)
+    if "prompt" in name_lower:
+        return "LLM prompt builders"
+    if "llm" in name_lower and "extract" in name_lower:
+        return "LLM-based structured data extraction"
+    if "pdf" in name_lower and "extract" in name_lower:
+        return "PDF text/layout extraction"
+    if "tailor" in name_lower:
+        return "resume / content tailoring UI"
+    if name_lower in ("content",) or name_lower.endswith("content"):
+        if "extension" in raw.lower():
+            return "browser extension content scripts"
 
     # Pattern matching
     if "test" in name_lower:
@@ -421,6 +469,8 @@ def _infer_folder_purpose(folder_name: str, contents: List[str]) -> str:
         return "UI components"
     if "hook" in name_lower:
         return "custom hooks"
+    if "prompt" in name_lower:
+        return "LLM prompt builders"
     if "service" in name_lower:
         return "service layer"
     if "model" in name_lower:
@@ -490,10 +540,13 @@ def _detect_folder_patterns(folder_path: Path, files: List[FileInfo]) -> List[st
     return patterns
 
 
-def extract_file_signatures(file_path: Path, max_lines: int = 200) -> List[Dict[str, str]]:
+def _extract_file_signatures_regex(file_path: Path, max_lines: int = 200) -> List[Dict[str, str]]:
     """
-    Extract top-level exports/declarations from a source file using regex.
-    Returns a list of dictionaries with 'name' and 'code_snippet'.
+    Legacy regex-based signature extractor.
+
+    Kept as a fallback for the moments when Tree-sitter is unavailable
+    (e.g. fresh `pip install` without grammar wheels, or unsupported
+    language extensions).
     """
     suffix = file_path.suffix.lower()
     patterns_and_groups = {
@@ -550,6 +603,35 @@ def extract_file_signatures(file_path: Path, max_lines: int = 200) -> List[Dict[
                 signatures.append({"name": name, "code_snippet": snippet})
 
     return signatures
+
+
+def extract_file_signatures(file_path: Path, max_lines: int = 200) -> List[Dict[str, str]]:
+    """
+    AST-first signature extractor.
+
+    Calls into `ast_compression.extract_skeleton` when a Tree-sitter grammar
+    is available for the file's language; falls back to the legacy regex
+    extractor otherwise (e.g. no `tree_sitter_languages` installed, or the
+    file uses an extension we don't have an AST rule for yet).
+
+    Return shape is preserved for backwards compatibility: a list of
+    `{"name": ..., "code_snippet": ...}` dicts.
+    """
+    if ast_get_language_rule(file_path) is None:
+        return _extract_file_signatures_regex(file_path, max_lines=max_lines)
+
+    skel = ast_extract_skeleton(file_path)
+    if skel is None or skel.used_fallback or not skel.signatures:
+        return _extract_file_signatures_regex(file_path, max_lines=max_lines)
+
+    out: List[Dict[str, str]] = []
+    seen: set = set()
+    for sig in skel.signatures:
+        if sig.name in seen or sig.name == "(anonymous)" or sig.name.startswith("_"):
+            continue
+        seen.add(sig.name)
+        out.append({"name": sig.name, "code_snippet": sig.signature.splitlines()[0]})
+    return out
 
 
 def _read_readme_summary(folder_path: Path, max_lines: int = 5) -> str:
@@ -730,7 +812,7 @@ def scan_folder(
                 files.append(FileInfo(name=entry.name, role=role, size_lines=line_count,
                                      exports=file_exports))
 
-    purpose = _infer_folder_purpose(folder_name, [f.name for f in files])
+    purpose = _infer_folder_purpose(rel_path or folder_name, [f.name for f in files])
     has_tests = any(f.role == "test file" for f in files)
     has_config = any("config" in f.role for f in files)
     patterns = _detect_folder_patterns(folder_path, files)
@@ -742,6 +824,18 @@ def scan_folder(
     readme_summary = _read_readme_summary(folder_path)
     public_api = _extract_barrel_exports(folder_path, files)
     key_deps = _extract_key_dependencies(folder_path)
+
+    # AST skeletons for the source files we actually parsed
+    folder_skeletons: List[ASTSkeleton] = []
+    if extract_signatures:
+        for f in files:
+            entry_path = folder_path / f.name
+            if ast_get_language_rule(entry_path) is None:
+                continue
+            skel = ast_extract_skeleton(entry_path)
+            if skel is None or skel.used_fallback or not skel.signatures:
+                continue
+            folder_skeletons.append(skel)
 
     return FolderInfo(
         name=folder_name,
@@ -757,6 +851,7 @@ def scan_folder(
         readme_summary=readme_summary,
         public_api=public_api,
         key_dependencies=key_deps,
+        skeletons=folder_skeletons,
     )
 
 
@@ -1033,7 +1128,7 @@ def _enrich_purposes(root: FolderInfo) -> None:
 def scan_project_recursive(
     project_root: Path,
     project_config: ProjectConfig,
-    max_depth: int = 4,
+    max_depth: int = sys.maxsize,
     min_significance: int = 1,
 ) -> List[FolderInfo]:
     """
@@ -1043,6 +1138,11 @@ def scan_project_recursive(
 
     Returns a flat list of FolderInfo objects, one per significant folder.
     Backward-compatible entry point.
+
+    `max_depth` defaults to effectively unlimited.  The global token budget
+    enforced downstream is what bounds how much context is actually emitted;
+    we want the scanner to *see* every folder so the budget-aware emitter
+    can decide which ones to keep.
     """
     ctx = scan_project(project_root, project_config, max_depth=max_depth, min_significance=min_significance)
     return ctx.flat
@@ -1051,7 +1151,7 @@ def scan_project_recursive(
 def scan_project(
     project_root: Path,
     project_config: ProjectConfig,
-    max_depth: int = 4,
+    max_depth: int = sys.maxsize,
     min_significance: int = 1,
     extract_signatures: bool = True,
 ) -> ScanContext:
@@ -1123,7 +1223,7 @@ def scan_project(
 
 def format_tree_for_prompt(
     root: FolderInfo,
-    max_depth: int = 4,
+    max_depth: int = sys.maxsize,
     max_lines: int = 200,
 ) -> str:
     """
@@ -1343,14 +1443,27 @@ def format_folder_description(
     return "\n".join(lines)
 
 
-def generate_deterministic_folder_doc(folder: FolderInfo) -> str:
+def generate_deterministic_folder_doc(
+    folder: FolderInfo,
+    *,
+    max_token_budget: int = 4000,
+    include_docstrings: bool = True,
+) -> str:
     """
     Generate a deterministic (no LLM needed) structural documentation
-    for a folder. This is Tier 1 content -- always accurate, never hallucinated.
+    for a folder.  Always accurate, never hallucinated.
 
-    Includes: purpose, children listing, per-file subsections with descriptions
-    and exports, detected patterns, dependencies, and readme summary.
+    Now emits **AST skeletons** for source files (Phase 3) instead of just
+    listing export names, so the reader (human or LLM) sees real signatures
+    inline.  Falls back to the historical exports-only view when skeletons
+    are unavailable (no Tree-sitter grammar).
+
+    Per the research, the per-folder budget defaults to ~4000 tokens; if a
+    folder exceeds it, skeletons later in the list are downgraded to
+    signatures-only and finally to name-only listings.
     """
+    from .ast_compression import estimate_tokens, render_outline_markdown
+
     lines: List[str] = []
     folder_display = folder.path if folder.path else "root"
     title = folder.name.title() if folder.name != "root" else "Project Root"
@@ -1404,10 +1517,17 @@ def generate_deterministic_folder_doc(folder: FolderInfo) -> str:
     detail_files = all_files[:30]
     overflow_files = all_files[30:]
 
+    # Build a name -> Skeleton lookup so each file section can pull its
+    # compressed AST view inline.
+    skel_by_name: Dict[str, "ASTSkeleton"] = {}
+    for skel in folder.skeletons:
+        skel_by_name[Path(skel.file_path).name] = skel
+
     if detail_files:
         lines.append("## Files")
         lines.append("")
 
+        running_tokens = 0
         for i, f in enumerate(detail_files):
             lines.append(f"### `{f.name}`")
             lines.append(f"**Role:** {f.role} | **Lines:** {f.size_lines}")
@@ -1417,7 +1537,36 @@ def generate_deterministic_folder_doc(folder: FolderInfo) -> str:
                 lines.append(f.description)
                 lines.append("")
 
-            if f.exports:
+            skel = skel_by_name.get(f.name)
+            rendered_signatures = False
+            if skel is not None and skel.signatures:
+                outline = (
+                    skel.outline_markdown
+                    if include_docstrings
+                    else render_outline_markdown(
+                        Path(skel.file_path),
+                        skel.signatures,
+                        skel.imports,
+                        include_docstrings=False,
+                    )
+                )
+                cost = estimate_tokens(outline)
+                if running_tokens + cost > max_token_budget:
+                    # Downgrade: drop docstrings, then truncate
+                    outline = render_outline_markdown(
+                        Path(skel.file_path),
+                        skel.signatures,
+                        skel.imports,
+                        include_docstrings=False,
+                    )
+                    cost = estimate_tokens(outline)
+                if running_tokens + cost <= max_token_budget:
+                    lines.append(outline)
+                    lines.append("")
+                    running_tokens += cost
+                    rendered_signatures = True
+
+            if not rendered_signatures and f.exports:
                 lines.append("**Key Exports:**")
                 for exp_item in f.exports[:10]:
                     exp_name = exp_item["name"]
