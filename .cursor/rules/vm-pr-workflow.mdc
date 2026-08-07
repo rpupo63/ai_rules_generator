@@ -1,0 +1,13 @@
+---
+description: On non-laptop hosts, branch vm/<host>/<topic> and open a PR into main instead of committing to trunk.
+alwaysApply: true
+---
+
+# VM PR policy
+
+If `~/.config/agent-host/role` is `vm` or `homeserver`, or hostname is not `beto`:
+
+- Do not commit to `main`/`master`
+- Use branch `vm/<hostname>/<topic>`, push, `gh pr create --base main`
+
+Session checkpoints: skill `session-handoff`. Cross-machine handoffs live in `.agent-sessions/CURRENT.md`.
