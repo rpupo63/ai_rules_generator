@@ -1,0 +1,27 @@
+---
+description: Auto-sync always-allow tool permissions into .agents/permissions.json for this GitHub repo (Claude/Cursor/Memory)
+alwaysApply: true
+---
+
+# Propagate repo permissions
+
+When the user says **always allow**, **permanently allow**, **don't ask again**, or asks to sync/share a tool permission across models:
+
+1. Resolve the git repo root (cwd / workspace).
+2. Run immediately (do not only document it):
+
+```bash
+repo-permissions-sync add --remember 'Bash(<pattern> *)'
+```
+
+Use Claude-style rules. Prefer a stable prefix + `*`, e.g.:
+
+- `Bash(npm test *)`
+- `Bash(./install/validate.sh *)`
+- `Bash(git status *)`
+
+3. Confirm with `repo-permissions-sync show`.
+4. Canonical file is `.agents/permissions.json` — commit it with the repo. Do not put secrets there.
+5. `.claude/settings.local.json` is local/gitignored; SessionStart/ConfigChange hooks keep it aligned.
+
+If `.agents/permissions.json` is missing but `.claude/settings.local.json` has allows, run `repo-permissions-sync import` then `export`.

@@ -1,0 +1,12 @@
+---
+description: Destructive system operations require explicit confirmation
+alwaysApply: true
+---
+
+# Destructive operations
+
+Never execute `dd`, `mkfs`, `parted`, `sfdisk`, `wipefs`, `rclone sync`, `pacman -Syu`, or
+`git checkout -f` against `$HOME` without quoting the exact command and receiving explicit
+approval **in the current turn**. Prior approval of a similar command does not carry over.
+
+When a command is blocked, explain why and wait for the user to approve that exact invocation.
