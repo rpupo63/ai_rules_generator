@@ -1,8 +1,19 @@
 {
   "version": 1,
   "repo": "rpupo63/ai_rules_generator",
-  "updated_at": "2026-08-07T21:20:54Z",
+  "updated_at": "2026-08-08T02:30:23Z",
   "allow": [],
-  "deny": [],
-  "ask": []
+  "deny": [
+    "Bash(dd *)",
+    "Bash(mkfs *)",
+    "Bash(parted *)",
+    "Bash(sfdisk *)",
+    "Bash(wipefs *)",
+    "Bash(rclone sync *)",
+    "Bash(pacman -Syu*)",
+    "Bash(git checkout -f ~/*)",
+    "Bash(git checkout -f $HOME/*)"
+  ],
+  "ask": [],
+  "notes": []
 }
