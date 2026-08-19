@@ -52,6 +52,8 @@ ROLLOUT_EXCLUDE_SUBSTRINGS: Tuple[str, ...] = (
     "llama.cpp",
     "_hyprhdr/Hyprland",
     "_hyprhdr/hl-sweet",
+    "quality-of-life-laptop-improvements/_hyprhdr/Hyprland",
+    "quality-of-life-laptop-improvements/_hyprhdr/hl-sweet",
     "pupos_claude_code",
     ".package-manager-repos/aur",
     ".package-manager-repos/homebrew",
